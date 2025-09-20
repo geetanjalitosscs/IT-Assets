@@ -1,0 +1,355 @@
+<?php
+require_once 'config/database.php';
+require_once 'config/session.php';
+
+requireLogin();
+$pageTitle = 'Reports';
+$pdo = getConnection();
+
+// Handle report generation
+if ($_POST && isset($_POST['action']) && $_POST['action'] == 'generate_report') {
+    $reportType = $_POST['report_type'];
+    $format = $_POST['format'];
+    
+    // Get data based on report type
+    switch ($reportType) {
+        case 'systems':
+            if (isSuperAdmin()) {
+                $stmt = $pdo->query("
+                    SELECT s.system_code, s.type, s.cpu, s.ram, s.storage, s.os, s.status, 
+                           e.full_name as assigned_to, b.name as branch_name, s.assigned_date
+                    FROM systems s
+                    LEFT JOIN employees e ON s.assigned_to = e.id
+                    LEFT JOIN branches b ON s.branch_id = b.id
+                    ORDER BY b.name, s.system_code
+                ");
+            } else {
+                $stmt = $pdo->prepare("
+                    SELECT s.system_code, s.type, s.cpu, s.ram, s.storage, s.os, s.status, 
+                           e.full_name as assigned_to, b.name as branch_name, s.assigned_date
+                    FROM systems s
+                    LEFT JOIN employees e ON s.assigned_to = e.id
+                    LEFT JOIN branches b ON s.branch_id = b.id
+                    WHERE s.branch_id = ?
+                    ORDER BY s.system_code
+                ");
+                $stmt->execute([getCurrentUserBranch()]);
+            }
+            $data = $stmt->fetchAll();
+            $filename = 'systems_report_' . date('Y-m-d');
+            break;
+            
+        case 'employees':
+            if (isSuperAdmin()) {
+                $stmt = $pdo->query("
+                    SELECT e.employee_id, e.full_name, e.email, e.phone, e.department, e.position,
+                           b.name as branch_name, COUNT(s.id) as assigned_systems
+                    FROM employees e
+                    LEFT JOIN branches b ON e.branch_id = b.id
+                    LEFT JOIN systems s ON e.id = s.assigned_to
+                    GROUP BY e.id
+                    ORDER BY b.name, e.full_name
+                ");
+            } else {
+                $stmt = $pdo->prepare("
+                    SELECT e.employee_id, e.full_name, e.email, e.phone, e.department, e.position,
+                           b.name as branch_name, COUNT(s.id) as assigned_systems
+                    FROM employees e
+                    LEFT JOIN branches b ON e.branch_id = b.id
+                    LEFT JOIN systems s ON e.id = s.assigned_to
+                    WHERE e.branch_id = ?
+                    GROUP BY e.id
+                    ORDER BY e.full_name
+                ");
+                $stmt->execute([getCurrentUserBranch()]);
+            }
+            $data = $stmt->fetchAll();
+            $filename = 'employees_report_' . date('Y-m-d');
+            break;
+            
+        case 'peripherals':
+            if (isSuperAdmin()) {
+                $stmt = $pdo->query("
+                    SELECT p.name, p.type, p.brand, p.model, p.serial_number, p.status,
+                           s.system_code, b.name as branch_name
+                    FROM peripherals p
+                    LEFT JOIN systems s ON p.system_id = s.id
+                    LEFT JOIN branches b ON s.branch_id = b.id
+                    ORDER BY p.type, p.name
+                ");
+            } else {
+                $stmt = $pdo->prepare("
+                    SELECT p.name, p.type, p.brand, p.model, p.serial_number, p.status,
+                           s.system_code, b.name as branch_name
+                    FROM peripherals p
+                    LEFT JOIN systems s ON p.system_id = s.id
+                    LEFT JOIN branches b ON s.branch_id = b.id
+                    WHERE s.branch_id = ? OR p.system_id IS NULL
+                    ORDER BY p.type, p.name
+                ");
+                $stmt->execute([getCurrentUserBranch()]);
+            }
+            $data = $stmt->fetchAll();
+            $filename = 'peripherals_report_' . date('Y-m-d');
+            break;
+            
+        case 'system_history':
+            if (isSuperAdmin()) {
+                $stmt = $pdo->query("
+                    SELECT s.system_code, e.full_name as employee_name, e.employee_id,
+                           b.name as branch_name, sh.assigned_date, sh.returned_date, sh.notes
+                    FROM system_history sh
+                    JOIN systems s ON sh.system_id = s.id
+                    JOIN employees e ON sh.employee_id = e.id
+                    JOIN branches b ON s.branch_id = b.id
+                    ORDER BY sh.assigned_date DESC
+                ");
+            } else {
+                $stmt = $pdo->prepare("
+                    SELECT s.system_code, e.full_name as employee_name, e.employee_id,
+                           b.name as branch_name, sh.assigned_date, sh.returned_date, sh.notes
+                    FROM system_history sh
+                    JOIN systems s ON sh.system_id = s.id
+                    JOIN employees e ON sh.employee_id = e.id
+                    JOIN branches b ON s.branch_id = b.id
+                    WHERE s.branch_id = ?
+                    ORDER BY sh.assigned_date DESC
+                ");
+                $stmt->execute([getCurrentUserBranch()]);
+            }
+            $data = $stmt->fetchAll();
+            $filename = 'system_history_report_' . date('Y-m-d');
+            break;
+    }
+    
+    if ($format == 'csv') {
+        // Generate CSV
+        header('Content-Type: text/csv');
+        header('Content-Disposition: attachment; filename="' . $filename . '.csv"');
+        
+        $output = fopen('php://output', 'w');
+        
+        // Write headers
+        if (!empty($data)) {
+            fputcsv($output, array_keys($data[0]));
+            
+            // Write data
+            foreach ($data as $row) {
+                fputcsv($output, $row);
+            }
+        }
+        
+        fclose($output);
+        exit();
+    } elseif ($format == 'pdf') {
+        // For PDF, we'll redirect to a PDF generation page
+        $_SESSION['report_data'] = $data;
+        $_SESSION['report_type'] = $reportType;
+        $_SESSION['report_filename'] = $filename;
+        header('Location: generate_pdf.php');
+        exit();
+    }
+}
+
+include 'includes/header.php';
+include 'includes/sidebar.php';
+?>
+
+<div class="main-content">
+    <div class="content-wrapper">
+        <!-- Page Header -->
+        <div class="page-header">
+            <h1 class="page-title">
+                <i class="fas fa-chart-bar me-3"></i>Reports
+            </h1>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="<?php echo isSuperAdmin() ? 'dashboard.php' : 'branch_dashboard.php'; ?>">Dashboard</a></li>
+                    <li class="breadcrumb-item active">Reports</li>
+                </ol>
+            </nav>
+        </div>
+
+        <!-- Report Generation Form -->
+        <div class="row">
+            <div class="col-lg-8">
+                <div class="card shadow mb-4">
+                    <div class="card-header">
+                        <h6 class="m-0 font-weight-bold text-white">
+                            <i class="fas fa-file-export me-2"></i>Generate Report
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        <form method="POST">
+                            <input type="hidden" name="action" value="generate_report">
+                            
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="report_type" class="form-label">Report Type <span class="text-danger">*</span></label>
+                                        <select class="form-select" id="report_type" name="report_type" required>
+                                            <option value="">Select Report Type</option>
+                                            <option value="systems">Systems Report</option>
+                                            <option value="employees">Employees Report</option>
+                                            <option value="peripherals">Peripherals Report</option>
+                                            <option value="system_history">System History Report</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="format" class="form-label">Export Format <span class="text-danger">*</span></label>
+                                        <select class="form-select" id="format" name="format" required>
+                                            <option value="">Select Format</option>
+                                            <option value="csv">CSV (Excel Compatible)</option>
+                                            <option value="pdf">PDF Document</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-download me-2"></i>Generate Report
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Quick Stats -->
+            <div class="col-lg-4">
+                <div class="card shadow mb-4">
+                    <div class="card-header">
+                        <h6 class="m-0 font-weight-bold text-white">
+                            <i class="fas fa-chart-pie me-2"></i>Quick Statistics
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        <?php
+                        // Get quick stats
+                        if (isSuperAdmin()) {
+                            $stmt = $pdo->query("SELECT COUNT(*) FROM systems");
+                            $totalSystems = $stmt->fetchColumn();
+                            
+                            $stmt = $pdo->query("SELECT COUNT(*) FROM employees");
+                            $totalEmployees = $stmt->fetchColumn();
+                            
+                            $stmt = $pdo->query("SELECT COUNT(*) FROM peripherals");
+                            $totalPeripherals = $stmt->fetchColumn();
+                            
+                            $stmt = $pdo->query("SELECT COUNT(*) FROM branches");
+                            $totalBranches = $stmt->fetchColumn();
+                        } else {
+                            $stmt = $pdo->prepare("SELECT COUNT(*) FROM systems WHERE branch_id = ?");
+                            $stmt->execute([getCurrentUserBranch()]);
+                            $totalSystems = $stmt->fetchColumn();
+                            
+                            $stmt = $pdo->prepare("SELECT COUNT(*) FROM employees WHERE branch_id = ?");
+                            $stmt->execute([getCurrentUserBranch()]);
+                            $totalEmployees = $stmt->fetchColumn();
+                            
+                            $stmt = $pdo->prepare("SELECT COUNT(*) FROM peripherals p JOIN systems s ON p.system_id = s.id WHERE s.branch_id = ?");
+                            $stmt->execute([getCurrentUserBranch()]);
+                            $totalPeripherals = $stmt->fetchColumn();
+                        }
+                        ?>
+                        
+                        <div class="row text-center">
+                            <div class="col-6 mb-3">
+                                <div class="border rounded p-3">
+                                    <h4 class="text-primary mb-1"><?php echo $totalSystems; ?></h4>
+                                    <small class="text-muted">Systems</small>
+                                </div>
+                            </div>
+                            <div class="col-6 mb-3">
+                                <div class="border rounded p-3">
+                                    <h4 class="text-success mb-1"><?php echo $totalEmployees; ?></h4>
+                                    <small class="text-muted">Employees</small>
+                                </div>
+                            </div>
+                            <div class="col-6 mb-3">
+                                <div class="border rounded p-3">
+                                    <h4 class="text-info mb-1"><?php echo $totalPeripherals; ?></h4>
+                                    <small class="text-muted">Peripherals</small>
+                                </div>
+                            </div>
+                            <?php if (isSuperAdmin()): ?>
+                                <div class="col-6 mb-3">
+                                    <div class="border rounded p-3">
+                                        <h4 class="text-warning mb-1"><?php echo $totalBranches; ?></h4>
+                                        <small class="text-muted">Branches</small>
+                                    </div>
+                                </div>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Available Reports Info -->
+        <div class="row">
+            <div class="col-12">
+                <div class="card shadow">
+                    <div class="card-header">
+                        <h6 class="m-0 font-weight-bold text-white">
+                            <i class="fas fa-info-circle me-2"></i>Available Reports
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <div class="d-flex">
+                                    <div class="flex-shrink-0">
+                                        <i class="fas fa-desktop text-primary fa-2x"></i>
+                                    </div>
+                                    <div class="flex-grow-1 ms-3">
+                                        <h5>Systems Report</h5>
+                                        <p class="text-muted mb-0">Complete list of all systems with their configurations, status, and assignments.</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <div class="d-flex">
+                                    <div class="flex-shrink-0">
+                                        <i class="fas fa-user-tie text-success fa-2x"></i>
+                                    </div>
+                                    <div class="flex-grow-1 ms-3">
+                                        <h5>Employees Report</h5>
+                                        <p class="text-muted mb-0">Employee directory with contact information and assigned systems count.</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <div class="d-flex">
+                                    <div class="flex-shrink-0">
+                                        <i class="fas fa-keyboard text-info fa-2x"></i>
+                                    </div>
+                                    <div class="flex-grow-1 ms-3">
+                                        <h5>Peripherals Report</h5>
+                                        <p class="text-muted mb-0">Inventory of all peripherals with their specifications and assignments.</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <div class="d-flex">
+                                    <div class="flex-shrink-0">
+                                        <i class="fas fa-history text-warning fa-2x"></i>
+                                    </div>
+                                    <div class="flex-grow-1 ms-3">
+                                        <h5>System History Report</h5>
+                                        <p class="text-muted mb-0">Complete audit trail of system assignments and returns.</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<?php include 'includes/footer.php'; ?>
