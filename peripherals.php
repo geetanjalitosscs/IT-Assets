@@ -19,10 +19,15 @@ if ($_POST) {
                 $systemId = !empty($_POST['system_id']) ? $_POST['system_id'] : null;
                 
                 if (!empty($name) && !empty($type)) {
+                    // Get the next sequential ID
+                    $stmt = $pdo->query("SELECT COALESCE(MAX(id), 0) + 1 as next_id FROM peripherals");
+                    $result = $stmt->fetch();
+                    $next_id = $result['next_id'];
+                    
                     $status = $systemId ? 'Assigned' : 'Available';
-                    $stmt = $pdo->prepare("INSERT INTO peripherals (name, type, brand, model, serial_number, system_id, status) VALUES (?, ?, ?, ?, ?, ?, ?)");
-                    $stmt->execute([$name, $type, $brand, $model, $serialNumber, $systemId, $status]);
-                    $success = "Peripheral added successfully!";
+                    $stmt = $pdo->prepare("INSERT INTO peripherals (id, name, type, brand, model, serial_number, system_id, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+                    $stmt->execute([$next_id, $name, $type, $brand, $model, $serialNumber, $systemId, $status]);
+                    $success = "Peripheral added successfully with ID: " . $next_id;
                 } else {
                     $error = "Please fill in all required fields.";
                 }
@@ -72,9 +77,27 @@ if ($_POST) {
                 
             case 'delete':
                 $id = $_POST['id'];
+                
+                // First, delete the peripheral
                 $stmt = $pdo->prepare("DELETE FROM peripherals WHERE id = ?");
                 $stmt->execute([$id]);
-                $success = "Peripheral deleted successfully!";
+                
+                // Then reorder the remaining peripherals to fill the gap
+                // Step 1: Get all remaining peripherals ordered by current ID
+                $stmt = $pdo->query("SELECT id, name, type, brand, model, serial_number, system_id, status FROM peripherals ORDER BY id");
+                $remaining_peripherals = $stmt->fetchAll();
+                
+                // Step 2: Update each peripheral with new sequential ID
+                $new_id = 1;
+                foreach ($remaining_peripherals as $peripheral) {
+                    if ($peripheral['id'] != $new_id) {
+                        $stmt = $pdo->prepare("UPDATE peripherals SET id = ? WHERE id = ?");
+                        $stmt->execute([$new_id, $peripheral['id']]);
+                    }
+                    $new_id++;
+                }
+                
+                $success = "Peripheral deleted successfully and IDs reordered!";
                 break;
         }
     }

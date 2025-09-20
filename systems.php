@@ -24,9 +24,15 @@ if ($_POST) {
                     $stmt = $pdo->prepare("SELECT COUNT(*) FROM systems WHERE system_code = ?");
                     $stmt->execute([$systemCode]);
                     if ($stmt->fetchColumn() == 0) {
-                        $stmt = $pdo->prepare("INSERT INTO systems (system_code, branch_id, type, cpu, ram, storage, os) VALUES (?, ?, ?, ?, ?, ?, ?)");
-                        $stmt->execute([$systemCode, $branchId, $type, $cpu, $ram, $storage, $os]);
-                        $success = "System added successfully!";
+                        // Get the next sequential ID
+                        $stmt = $pdo->query("SELECT COALESCE(MAX(id), 0) + 1 as next_id FROM systems");
+                        $result = $stmt->fetch();
+                        $next_id = $result['next_id'];
+                        
+                        // Insert with the next sequential ID
+                        $stmt = $pdo->prepare("INSERT INTO systems (id, system_code, branch_id, type, cpu, ram, storage, os) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+                        $stmt->execute([$next_id, $systemCode, $branchId, $type, $cpu, $ram, $storage, $os]);
+                        $success = "System added successfully with ID: " . $next_id;
                         // Force refresh after successful operation
                         clearConnectionCache();
                     } else {
@@ -120,9 +126,27 @@ if ($_POST) {
                 
             case 'delete':
                 $id = $_POST['id'];
+                
+                // First, delete the system
                 $stmt = $pdo->prepare("DELETE FROM systems WHERE id = ?");
                 $stmt->execute([$id]);
-                $success = "System deleted successfully!";
+                
+                // Then reorder the remaining systems to fill the gap
+                // Step 1: Get all remaining systems ordered by current ID
+                $stmt = $pdo->query("SELECT id, system_code, branch_id, type, cpu, ram, storage, os, status, assigned_to, assigned_date FROM systems ORDER BY id");
+                $remaining_systems = $stmt->fetchAll();
+                
+                // Step 2: Update each system with new sequential ID
+                $new_id = 1;
+                foreach ($remaining_systems as $system) {
+                    if ($system['id'] != $new_id) {
+                        $stmt = $pdo->prepare("UPDATE systems SET id = ? WHERE id = ?");
+                        $stmt->execute([$new_id, $system['id']]);
+                    }
+                    $new_id++;
+                }
+                
+                $success = "System deleted successfully and IDs reordered!";
                 break;
         }
     }

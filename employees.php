@@ -24,9 +24,15 @@ if ($_POST) {
                     $stmt = $pdo->prepare("SELECT COUNT(*) FROM employees WHERE employee_id = ?");
                     $stmt->execute([$employeeId]);
                     if ($stmt->fetchColumn() == 0) {
-                        $stmt = $pdo->prepare("INSERT INTO employees (employee_id, full_name, email, phone, department, position, branch_id) VALUES (?, ?, ?, ?, ?, ?, ?)");
-                        $stmt->execute([$employeeId, $fullName, $email, $phone, $department, $position, $branchId]);
-                        $success = "Employee added successfully!";
+                        // Get the next sequential ID
+                        $stmt = $pdo->query("SELECT COALESCE(MAX(id), 0) + 1 as next_id FROM employees");
+                        $result = $stmt->fetch();
+                        $next_id = $result['next_id'];
+                        
+                        // Insert with the next sequential ID
+                        $stmt = $pdo->prepare("INSERT INTO employees (id, employee_id, full_name, email, phone, department, position, branch_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+                        $stmt->execute([$next_id, $employeeId, $fullName, $email, $phone, $department, $position, $branchId]);
+                        $success = "Employee added successfully with ID: " . $next_id;
                     } else {
                         $error = "Employee ID already exists!";
                     }
@@ -63,9 +69,27 @@ if ($_POST) {
                 
             case 'delete':
                 $id = $_POST['id'];
+                
+                // First, delete the employee
                 $stmt = $pdo->prepare("DELETE FROM employees WHERE id = ?");
                 $stmt->execute([$id]);
-                $success = "Employee deleted successfully!";
+                
+                // Then reorder the remaining employees to fill the gap
+                // Step 1: Get all remaining employees ordered by current ID
+                $stmt = $pdo->query("SELECT id, employee_id, full_name, email, phone, department, position, branch_id FROM employees ORDER BY id");
+                $remaining_employees = $stmt->fetchAll();
+                
+                // Step 2: Update each employee with new sequential ID
+                $new_id = 1;
+                foreach ($remaining_employees as $employee) {
+                    if ($employee['id'] != $new_id) {
+                        $stmt = $pdo->prepare("UPDATE employees SET id = ? WHERE id = ?");
+                        $stmt->execute([$new_id, $employee['id']]);
+                    }
+                    $new_id++;
+                }
+                
+                $success = "Employee deleted successfully and IDs reordered!";
                 break;
         }
     }

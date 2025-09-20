@@ -21,9 +21,15 @@ if ($_POST) {
                 $location = trim($_POST['location']);
                 
                 if (!empty($name) && !empty($location)) {
-                    $stmt = $pdo->prepare("INSERT INTO branches (name, location) VALUES (?, ?)");
-                    $stmt->execute([$name, $location]);
-                    $success = "Branch added successfully!";
+                    // Get the next sequential ID (since we maintain continuous sequence)
+                    $stmt = $pdo->query("SELECT COALESCE(MAX(id), 0) + 1 as next_id FROM branches");
+                    $result = $stmt->fetch();
+                    $next_id = $result['next_id'];
+                    
+                    // Insert with the next sequential ID
+                    $stmt = $pdo->prepare("INSERT INTO branches (id, name, location) VALUES (?, ?, ?)");
+                    $stmt->execute([$next_id, $name, $location]);
+                    $success = "Branch added successfully with ID: " . $next_id;
                 } else {
                     $error = "Please fill in all fields.";
                 }
@@ -45,9 +51,29 @@ if ($_POST) {
                 
             case 'delete':
                 $id = $_POST['id'];
+                
+                // First, delete the branch
                 $stmt = $pdo->prepare("DELETE FROM branches WHERE id = ?");
                 $stmt->execute([$id]);
-                $success = "Branch deleted successfully!";
+                
+                // Then reorder the remaining branches to fill the gap
+                // We'll do this in multiple steps to avoid MySQL syntax issues
+                
+                // Step 1: Get all remaining branches ordered by current ID
+                $stmt = $pdo->query("SELECT id, name, location FROM branches ORDER BY id");
+                $remaining_branches = $stmt->fetchAll();
+                
+                // Step 2: Update each branch with new sequential ID
+                $new_id = 1;
+                foreach ($remaining_branches as $branch) {
+                    if ($branch['id'] != $new_id) {
+                        $stmt = $pdo->prepare("UPDATE branches SET id = ? WHERE id = ?");
+                        $stmt->execute([$new_id, $branch['id']]);
+                    }
+                    $new_id++;
+                }
+                
+                $success = "Branch deleted successfully and IDs reordered!";
                 break;
         }
     }

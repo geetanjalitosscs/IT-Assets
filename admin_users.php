@@ -35,10 +35,15 @@ if ($_POST) {
                 if ($stmt->fetch()) {
                     $error = 'Username already exists';
                 } else {
+                    // Get the next sequential ID
+                    $stmt = $pdo->query("SELECT COALESCE(MAX(id), 0) + 1 as next_id FROM users");
+                    $result = $stmt->fetch();
+                    $next_id = $result['next_id'];
+                    
                     $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
-                    $stmt = $pdo->prepare("INSERT INTO users (username, password, role, branch_id, full_name, email) VALUES (?, ?, ?, ?, ?, ?)");
-                    $stmt->execute([$username, $hashedPassword, $role, $branchId, $full_name, $email]);
-                    $message = 'User added successfully';
+                    $stmt = $pdo->prepare("INSERT INTO users (id, username, password, role, branch_id, full_name, email) VALUES (?, ?, ?, ?, ?, ?, ?)");
+                    $stmt->execute([$next_id, $username, $hashedPassword, $role, $branchId, $full_name, $email]);
+                    $message = 'User added successfully with ID: ' . $next_id;
                 }
             } catch (Exception $e) {
                 $error = 'Error adding user: ' . $e->getMessage();
@@ -72,9 +77,26 @@ if ($_POST) {
     } elseif ($action === 'delete') {
         $id = $_POST['id'];
         try {
+            // First, delete the user
             $stmt = $pdo->prepare("DELETE FROM users WHERE id = ? AND branch_id = ? AND id != ?");
             $stmt->execute([$id, $branchId, $_SESSION['user_id']]);
-            $message = 'User deleted successfully';
+            
+            // Then reorder the remaining users to fill the gap
+            // Step 1: Get all remaining users ordered by current ID
+            $stmt = $pdo->query("SELECT id, username, password, role, branch_id, full_name, email FROM users ORDER BY id");
+            $remaining_users = $stmt->fetchAll();
+            
+            // Step 2: Update each user with new sequential ID
+            $new_id = 1;
+            foreach ($remaining_users as $user) {
+                if ($user['id'] != $new_id) {
+                    $stmt = $pdo->prepare("UPDATE users SET id = ? WHERE id = ?");
+                    $stmt->execute([$new_id, $user['id']]);
+                }
+                $new_id++;
+            }
+            
+            $message = 'User deleted successfully and IDs reordered';
         } catch (Exception $e) {
             $error = 'Error deleting user: ' . $e->getMessage();
         }

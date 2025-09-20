@@ -155,6 +155,196 @@ include 'includes/header.php';
 include 'includes/sidebar.php';
 ?>
 
+<style>
+/* Professional Report Cards Styling */
+.report-card {
+    background: white;
+    border-radius: 16px;
+    padding: 24px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+    border: 1px solid rgba(0, 0, 0, 0.05);
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.report-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.report-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+}
+
+.report-card:hover::before {
+    opacity: 1;
+}
+
+.report-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 16px;
+}
+
+.report-icon {
+    width: 60px;
+    height: 60px;
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    color: white;
+    position: relative;
+    overflow: hidden;
+}
+
+.report-icon::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.2) 0%, rgba(255, 255, 255, 0.1) 100%);
+    border-radius: 16px;
+}
+
+.report-icon i {
+    position: relative;
+    z-index: 2;
+}
+
+.systems-icon {
+    background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
+}
+
+.employees-icon {
+    background: linear-gradient(135deg, #16a34a 0%, #22c55e 100%);
+}
+
+.peripherals-icon {
+    background: linear-gradient(135deg, #0ea5e9 0%, #06b6d4 100%);
+}
+
+.history-icon {
+    background: linear-gradient(135deg, #f59e0b 0%, #f97316 100%);
+}
+
+.report-badge {
+    margin-top: -8px;
+}
+
+.report-badge .badge {
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 6px 12px;
+    border-radius: 20px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.report-title {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #1f2937;
+    margin-bottom: 12px;
+    line-height: 1.3;
+}
+
+.report-description {
+    color: #6b7280;
+    font-size: 0.95rem;
+    line-height: 1.6;
+    margin-bottom: 16px;
+}
+
+.report-features {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.feature-tag {
+    background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%);
+    color: #374151;
+    font-size: 0.8rem;
+    font-weight: 500;
+    padding: 4px 10px;
+    border-radius: 12px;
+    border: 1px solid #d1d5db;
+}
+
+.report-icon-container {
+    width: 40px;
+    height: 40px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+}
+
+.report-tips .alert {
+    border-radius: 16px;
+    padding: 20px;
+}
+
+.report-tips ul {
+    padding-left: 20px;
+}
+
+.report-tips li {
+    margin-bottom: 8px;
+    line-height: 1.5;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .report-card {
+        padding: 20px;
+    }
+    
+    .report-icon {
+        width: 50px;
+        height: 50px;
+        font-size: 20px;
+    }
+    
+    .report-title {
+        font-size: 1.1rem;
+    }
+    
+    .report-description {
+        font-size: 0.9rem;
+    }
+}
+
+@media (max-width: 576px) {
+    .report-card-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+    }
+    
+    .report-badge {
+        margin-top: 0;
+        align-self: flex-end;
+    }
+}
+</style>
+
 <div class="main-content">
     <div class="content-wrapper">
         <!-- Page Header -->
@@ -292,55 +482,124 @@ include 'includes/sidebar.php';
         <!-- Available Reports Info -->
         <div class="row">
             <div class="col-12">
-                <div class="card shadow">
-                    <div class="card-header">
-                        <h6 class="m-0 font-weight-bold text-white">
-                            <i class="fas fa-info-circle me-2"></i>Available Reports
+                <div class="card shadow-lg border-0" style="background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);">
+                    <div class="card-header border-0" style="background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%); border-radius: 15px 15px 0 0 !important;">
+                        <h6 class="m-0 font-weight-bold text-white d-flex align-items-center">
+                            <div class="report-icon-container me-3">
+                                <i class="fas fa-chart-line"></i>
+                            </div>
+                            Available Reports
+                            <span class="badge bg-light text-primary ms-auto">4 Reports</span>
                         </h6>
                     </div>
-                    <div class="card-body">
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <div class="d-flex">
-                                    <div class="flex-shrink-0">
-                                        <i class="fas fa-desktop text-primary fa-2x"></i>
+                    <div class="card-body p-4">
+                        <div class="row g-4">
+                            <!-- Systems Report -->
+                            <div class="col-lg-6 col-md-12">
+                                <div class="report-card h-100">
+                                    <div class="report-card-header">
+                                        <div class="report-icon systems-icon">
+                                            <i class="fas fa-desktop"></i>
+                                        </div>
+                                        <div class="report-badge">
+                                            <span class="badge bg-primary">Essential</span>
+                                        </div>
                                     </div>
-                                    <div class="flex-grow-1 ms-3">
-                                        <h5>Systems Report</h5>
-                                        <p class="text-muted mb-0">Complete list of all systems with their configurations, status, and assignments.</p>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-md-6 mb-3">
-                                <div class="d-flex">
-                                    <div class="flex-shrink-0">
-                                        <i class="fas fa-user-tie text-success fa-2x"></i>
-                                    </div>
-                                    <div class="flex-grow-1 ms-3">
-                                        <h5>Employees Report</h5>
-                                        <p class="text-muted mb-0">Employee directory with contact information and assigned systems count.</p>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-md-6 mb-3">
-                                <div class="d-flex">
-                                    <div class="flex-shrink-0">
-                                        <i class="fas fa-keyboard text-info fa-2x"></i>
-                                    </div>
-                                    <div class="flex-grow-1 ms-3">
-                                        <h5>Peripherals Report</h5>
-                                        <p class="text-muted mb-0">Inventory of all peripherals with their specifications and assignments.</p>
+                                    <div class="report-card-body">
+                                        <h5 class="report-title">Systems Report</h5>
+                                        <p class="report-description">Complete inventory of all computer systems including hardware specifications, software configurations, current status, and employee assignments across all branches.</p>
+                                        <div class="report-features">
+                                            <span class="feature-tag">Hardware Specs</span>
+                                            <span class="feature-tag">Status Tracking</span>
+                                            <span class="feature-tag">Assignments</span>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
-                            <div class="col-md-6 mb-3">
-                                <div class="d-flex">
-                                    <div class="flex-shrink-0">
-                                        <i class="fas fa-history text-warning fa-2x"></i>
+                            
+                            <!-- Employees Report -->
+                            <div class="col-lg-6 col-md-12">
+                                <div class="report-card h-100">
+                                    <div class="report-card-header">
+                                        <div class="report-icon employees-icon">
+                                            <i class="fas fa-user-tie"></i>
+                                        </div>
+                                        <div class="report-badge">
+                                            <span class="badge bg-success">Directory</span>
+                                        </div>
                                     </div>
-                                    <div class="flex-grow-1 ms-3">
-                                        <h5>System History Report</h5>
-                                        <p class="text-muted mb-0">Complete audit trail of system assignments and returns.</p>
+                                    <div class="report-card-body">
+                                        <h5 class="report-title">Employees Report</h5>
+                                        <p class="report-description">Comprehensive employee directory featuring contact details, departmental information, job positions, and the number of assigned IT assets per employee.</p>
+                                        <div class="report-features">
+                                            <span class="feature-tag">Contact Info</span>
+                                            <span class="feature-tag">Department</span>
+                                            <span class="feature-tag">Asset Count</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Peripherals Report -->
+                            <div class="col-lg-6 col-md-12">
+                                <div class="report-card h-100">
+                                    <div class="report-card-header">
+                                        <div class="report-icon peripherals-icon">
+                                            <i class="fas fa-keyboard"></i>
+                                        </div>
+                                        <div class="report-badge">
+                                            <span class="badge bg-info">Inventory</span>
+                                        </div>
+                                    </div>
+                                    <div class="report-card-body">
+                                        <h5 class="report-title">Peripherals Report</h5>
+                                        <p class="report-description">Detailed inventory of all peripheral devices including keyboards, mice, monitors, printers, and other accessories with their technical specifications and current assignments.</p>
+                                        <div class="report-features">
+                                            <span class="feature-tag">Device Types</span>
+                                            <span class="feature-tag">Specifications</span>
+                                            <span class="feature-tag">Assignments</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- System History Report -->
+                            <div class="col-lg-6 col-md-12">
+                                <div class="report-card h-100">
+                                    <div class="report-card-header">
+                                        <div class="report-icon history-icon">
+                                            <i class="fas fa-history"></i>
+                                        </div>
+                                        <div class="report-badge">
+                                            <span class="badge bg-warning">Audit Trail</span>
+                                        </div>
+                                    </div>
+                                    <div class="report-card-body">
+                                        <h5 class="report-title">System History Report</h5>
+                                        <p class="report-description">Complete audit trail documenting all system assignments, transfers, returns, and maintenance activities with timestamps and detailed notes for compliance tracking.</p>
+                                        <div class="report-features">
+                                            <span class="feature-tag">Timestamps</span>
+                                            <span class="feature-tag">Transfers</span>
+                                            <span class="feature-tag">Compliance</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Report Generation Tips -->
+                        <div class="report-tips mt-4">
+                            <div class="alert alert-light border-0" style="background: linear-gradient(135deg, #e3f2fd 0%, #f3e5f5 100%);">
+                                <div class="d-flex align-items-start">
+                                    <i class="fas fa-lightbulb text-warning me-3 mt-1"></i>
+                                    <div>
+                                        <h6 class="mb-2 text-dark">Report Generation Tips</h6>
+                                        <ul class="mb-0 text-muted small">
+                                            <li>CSV format is ideal for data analysis in Excel or Google Sheets</li>
+                                            <li>PDF format provides formatted reports suitable for presentations</li>
+                                            <li>Reports are generated based on your current access level and branch permissions</li>
+                                            <li>All reports include timestamps and can be regenerated at any time</li>
+                                        </ul>
                                     </div>
                                 </div>
                             </div>
