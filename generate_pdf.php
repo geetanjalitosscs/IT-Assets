@@ -27,6 +27,7 @@ unset($_SESSION['report_filename']);
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo ucfirst(str_replace('_', ' ', $reportType)); ?> Report</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -73,6 +74,42 @@ unset($_SESSION['report_filename']);
             border-top: 1px solid #ddd;
             padding-top: 20px;
         }
+        .btn {
+            padding: 10px 20px;
+            margin: 5px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            text-decoration: none;
+            display: inline-block;
+            transition: all 0.3s ease;
+        }
+        .btn-primary {
+            background-color: #667eea;
+            color: white;
+        }
+        .btn-primary:hover {
+            background-color: #5a67d8;
+            transform: translateY(-2px);
+        }
+        .btn-secondary {
+            background-color: #6c757d;
+            color: white;
+        }
+        .btn-secondary:hover {
+            background-color: #5a6268;
+            transform: translateY(-2px);
+        }
+        .btn-success {
+            background-color: #28a745;
+            color: white;
+        }
+        .btn-success:hover {
+            background-color: #218838;
+            transform: translateY(-2px);
+        }
         @media print {
             body { margin: 0; }
             .no-print { display: none; }
@@ -114,8 +151,15 @@ unset($_SESSION['report_filename']);
     </div>
 
     <div class="no-print" style="margin-top: 20px; text-align: center;">
-        <button onclick="window.print()" class="btn btn-primary">Print Report</button>
-        <button onclick="window.close()" class="btn btn-secondary">Close</button>
+        <button onclick="window.print()" class="btn btn-primary">
+            <i class="fas fa-print"></i> Print Report
+        </button>
+        <button onclick="saveAsPDF()" class="btn btn-success">
+            <i class="fas fa-save"></i> Save as PDF
+        </button>
+        <button onclick="goBack()" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> Return to Reports
+        </button>
     </div>
 
     <script>
@@ -124,6 +168,56 @@ unset($_SESSION['report_filename']);
             setTimeout(function() {
                 window.print();
             }, 1000);
+        }
+
+        // Function to go back to reports page
+        function goBack() {
+            // Show loading state
+            const button = event.target;
+            const originalText = button.innerHTML;
+            button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Returning...';
+            button.disabled = true;
+            
+            // Try to close the window first (works if opened in popup)
+            if (window.opener) {
+                window.close();
+            } else {
+                // If not opened in popup, redirect to reports page
+                setTimeout(function() {
+                    window.location.href = 'reports.php';
+                }, 500);
+            }
+        }
+
+        // Handle browser back button
+        window.addEventListener('popstate', function(event) {
+            window.location.href = 'reports.php';
+        });
+
+        // Add keyboard shortcut for closing (Ctrl+W or Escape)
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Escape') {
+                goBack();
+            }
+        });
+
+        // Function to save as PDF (using browser's print to PDF feature)
+        function saveAsPDF() {
+            // Show loading state
+            const button = event.target;
+            const originalText = button.innerHTML;
+            button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+            button.disabled = true;
+            
+            // Use browser's print dialog with PDF option
+            setTimeout(function() {
+                window.print();
+                // Restore button after a delay
+                setTimeout(function() {
+                    button.innerHTML = originalText;
+                    button.disabled = false;
+                }, 2000);
+            }, 500);
         }
     </script>
 </body>

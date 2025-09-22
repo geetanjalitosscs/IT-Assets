@@ -149,6 +149,18 @@ function initializeDatabase() {
         FOREIGN KEY (employee_id) REFERENCES employees(id) ON DELETE CASCADE
     )");
     
+    // Create activity_log table
+    $pdo->exec("CREATE TABLE IF NOT EXISTS activity_log (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        activity_type VARCHAR(50) NOT NULL,
+        entity_id INT NULL,
+        entity_name VARCHAR(100) NULL,
+        description TEXT NULL,
+        branch_id INT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (branch_id) REFERENCES branches(id) ON DELETE SET NULL
+    )");
+    
     // Insert default super admin
     $stmt = $pdo->prepare("SELECT COUNT(*) FROM users WHERE role = 'super_admin'");
     $stmt->execute();

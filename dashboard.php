@@ -11,7 +11,7 @@ if (!isSuperAdmin()) {
 
 $pageTitle = 'Super Admin Dashboard';
 
-// Get statistics
+// Get comprehensive statistics
 $pdo = getConnection();
 
 // Total branches
@@ -33,6 +33,66 @@ $totalEmployees = $stmt->fetchColumn();
 // Systems by status
 $stmt = $pdo->query("SELECT status, COUNT(*) as count FROM systems GROUP BY status");
 $systemsByStatus = $stmt->fetchAll();
+
+// Systems by type
+$stmt = $pdo->query("SELECT type, COUNT(*) as count FROM systems GROUP BY type");
+$systemsByType = $stmt->fetchAll();
+
+// Systems by branch
+$stmt = $pdo->query("
+    SELECT b.name as branch_name, COUNT(s.id) as system_count
+    FROM branches b
+    LEFT JOIN systems s ON b.id = s.branch_id
+    GROUP BY b.id, b.name
+    ORDER BY system_count DESC
+");
+$systemsByBranch = $stmt->fetchAll();
+
+// Recently assigned systems (last 30 days)
+$stmt = $pdo->query("
+    SELECT COUNT(*) FROM systems 
+    WHERE assigned_date >= DATE_SUB(NOW(), INTERVAL 30 DAY)
+");
+$recentlyAssigned = $stmt->fetchColumn();
+
+// Systems in repair
+$stmt = $pdo->query("SELECT COUNT(*) FROM systems WHERE status = 'In Repair'");
+$systemsInRepair = $stmt->fetchColumn();
+
+// Available systems (unassigned)
+$stmt = $pdo->query("SELECT COUNT(*) FROM systems WHERE status = 'Unassigned'");
+$availableSystems = $stmt->fetchColumn();
+
+// Total peripherals
+$stmt = $pdo->query("SELECT COUNT(*) FROM peripherals");
+$totalPeripherals = $stmt->fetchColumn();
+
+// Peripherals by status
+$stmt = $pdo->query("SELECT status, COUNT(*) as count FROM peripherals GROUP BY status");
+$peripheralsByStatus = $stmt->fetchAll();
+
+// Monthly system assignments trend (last 6 months)
+$stmt = $pdo->query("
+    SELECT 
+        DATE_FORMAT(assigned_date, '%Y-%m') as month,
+        COUNT(*) as count
+    FROM systems 
+    WHERE assigned_date >= DATE_SUB(NOW(), INTERVAL 6 MONTH)
+    GROUP BY DATE_FORMAT(assigned_date, '%Y-%m')
+    ORDER BY month
+");
+$monthlyAssignments = $stmt->fetchAll();
+
+// Department-wise system distribution
+$stmt = $pdo->query("
+    SELECT e.department, COUNT(s.id) as system_count
+    FROM systems s
+    JOIN employees e ON s.assigned_to = e.id
+    WHERE s.status = 'Assigned'
+    GROUP BY e.department
+    ORDER BY system_count DESC
+");
+$departmentDistribution = $stmt->fetchAll();
 
 // Recent activities - Get comprehensive recent activities from activity_log
 $stmt = $pdo->query("
@@ -82,93 +142,131 @@ include 'includes/sidebar.php';
         <!-- Statistics Cards -->
         <div class="row mb-4 justify-content-center">
             <div class="col-xl-3 col-md-6 mb-4">
-                <div class="card border-left-primary shadow h-100 py-2">
-                    <div class="card-body">
-                        <div class="row no-gutters align-items-center">
-                            <div class="col mr-2">
-                                <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
-                                    Total Branches</div>
-                                <div class="h5 mb-0 font-weight-bold text-gray-800"><?php echo $totalBranches; ?></div>
-                            </div>
-                            <div class="col-auto">
-                                <i class="fas fa-building fa-2x text-gray-300"></i>
+                <a href="branches.php" class="dashboard-card-link">
+                    <div class="card border-left-primary shadow h-100 py-2 clickable-card">
+                        <div class="card-body">
+                            <div class="row no-gutters align-items-center">
+                                <div class="col mr-2">
+                                    <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                                        Total Branches</div>
+                                    <div class="h5 mb-0 font-weight-bold text-gray-800"><?php echo $totalBranches; ?></div>
+                                </div>
+                                <div class="col-auto">
+                                    <i class="fas fa-building fa-2x text-gray-300"></i>
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
+                </a>
             </div>
 
             <div class="col-xl-3 col-md-6 mb-4">
-                <div class="card border-left-success shadow h-100 py-2">
-                    <div class="card-body">
-                        <div class="row no-gutters align-items-center">
-                            <div class="col mr-2">
-                                <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
-                                    Total Systems</div>
-                                <div class="h5 mb-0 font-weight-bold text-gray-800"><?php echo $totalSystems; ?></div>
-                            </div>
-                            <div class="col-auto">
-                                <i class="fas fa-desktop fa-2x text-gray-300"></i>
+                <a href="systems.php" class="dashboard-card-link">
+                    <div class="card border-left-success shadow h-100 py-2 clickable-card">
+                        <div class="card-body">
+                            <div class="row no-gutters align-items-center">
+                                <div class="col mr-2">
+                                    <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                                        Total Systems</div>
+                                    <div class="h5 mb-0 font-weight-bold text-gray-800"><?php echo $totalSystems; ?></div>
+                                </div>
+                                <div class="col-auto">
+                                    <i class="fas fa-desktop fa-2x text-gray-300"></i>
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
+                </a>
             </div>
 
             <div class="col-xl-3 col-md-6 mb-4">
-                <div class="card border-left-info shadow h-100 py-2">
-                    <div class="card-body">
-                        <div class="row no-gutters align-items-center">
-                            <div class="col mr-2">
-                                <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
-                                    Total Employees</div>
-                                <div class="h5 mb-0 font-weight-bold text-gray-800"><?php echo $totalEmployees; ?></div>
-                            </div>
-                            <div class="col-auto">
-                                <i class="fas fa-user-tie fa-2x text-gray-300"></i>
+                <a href="employees.php" class="dashboard-card-link">
+                    <div class="card border-left-info shadow h-100 py-2 clickable-card">
+                        <div class="card-body">
+                            <div class="row no-gutters align-items-center">
+                                <div class="col mr-2">
+                                    <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
+                                        Total Employees</div>
+                                    <div class="h5 mb-0 font-weight-bold text-gray-800"><?php echo $totalEmployees; ?></div>
+                                </div>
+                                <div class="col-auto">
+                                    <i class="fas fa-user-tie fa-2x text-gray-300"></i>
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
+                </a>
             </div>
 
             <div class="col-xl-3 col-md-6 mb-4">
-                <div class="card border-left-warning shadow h-100 py-2">
-                    <div class="card-body">
-                        <div class="row no-gutters align-items-center">
-                            <div class="col mr-2">
-                                <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
-                                    Total Users</div>
-                                <div class="h5 mb-0 font-weight-bold text-gray-800"><?php echo $totalUsers; ?></div>
-                            </div>
-                            <div class="col-auto">
-                                <i class="fas fa-users fa-2x text-gray-300"></i>
+                <a href="users.php" class="dashboard-card-link">
+                    <div class="card border-left-warning shadow h-100 py-2 clickable-card">
+                        <div class="card-body">
+                            <div class="row no-gutters align-items-center">
+                                <div class="col mr-2">
+                                    <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+                                        Total Users</div>
+                                    <div class="h5 mb-0 font-weight-bold text-gray-800"><?php echo $totalUsers; ?></div>
+                                </div>
+                                <div class="col-auto">
+                                    <i class="fas fa-users fa-2x text-gray-300"></i>
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
+                </a>
             </div>
         </div>
 
         <div class="row">
-            <!-- Systems Status Chart -->
+            <!-- Systems Status Overview -->
             <div class="col-xl-8 col-lg-7">
                 <div class="card shadow mb-4">
                     <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
                         <h6 class="m-0 font-weight-bold text-white">
                             <i class="fas fa-chart-pie me-2"></i>Systems Status Overview
                         </h6>
-                        <div class="dropdown">
-                            <button class="btn btn-sm btn-outline-light dropdown-toggle" type="button" data-bs-toggle="dropdown">
-                                <i class="fas fa-cog"></i>
+                        <div class="dropdown no-arrow">
+                            <button class="btn btn-sm btn-outline-light dropdown-toggle" type="button" id="chartDropdown" data-bs-toggle="dropdown">
+                                <i class="fas fa-chart-pie"></i> View Options
                             </button>
-                            <ul class="dropdown-menu">
-                                <li><a class="dropdown-item" href="#" onclick="refreshChart()"><i class="fas fa-sync-alt me-2"></i>Refresh</a></li>
-                                <li><a class="dropdown-item" href="#" onclick="exportChart()"><i class="fas fa-download me-2"></i>Export</a></li>
-                            </ul>
+                            <div class="dropdown-menu dropdown-menu-right">
+                                <a class="dropdown-item" href="#" onclick="switchChart('status')">By Status</a>
+                                <a class="dropdown-item" href="#" onclick="switchChart('type')">By Type</a>
+                                <a class="dropdown-item" href="#" onclick="switchChart('branch')">By Branch</a>
+                                <a class="dropdown-item" href="#" onclick="switchChart('department')">By Department</a>
+                            </div>
                         </div>
                     </div>
                     <div class="card-body">
+                        <!-- Chart Controls -->
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <div class="chart-controls">
+                                    <button class="btn btn-sm btn-outline-primary active" onclick="switchChart('status')" id="btn-status">
+                                        <i class="fas fa-chart-pie"></i> Status
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-primary" onclick="switchChart('type')" id="btn-type">
+                                        <i class="fas fa-chart-bar"></i> Type
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-primary" onclick="switchChart('branch')" id="btn-branch">
+                                        <i class="fas fa-building"></i> Branch
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-primary" onclick="switchChart('department')" id="btn-department">
+                                        <i class="fas fa-users"></i> Department
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="col-md-6 text-end">
+                                <button class="btn btn-sm btn-outline-secondary" onclick="refreshChart()">
+                                    <i class="fas fa-sync-alt"></i> Refresh
+                                </button>
+                                <button class="btn btn-sm btn-outline-success" onclick="exportChart()">
+                                    <i class="fas fa-download"></i> Export
+                                </button>
+                            </div>
+                        </div>
+                        
                         <!-- Chart Statistics -->
                         <div class="row mb-3">
                             <div class="col-md-3 text-center">
@@ -179,20 +277,20 @@ include 'includes/sidebar.php';
                             </div>
                             <div class="col-md-3 text-center">
                                 <div class="stat-item">
-                                    <div class="stat-number text-success"><?php echo isset($systemsByStatus[0]) ? $systemsByStatus[0]['count'] : 0; ?></div>
-                                    <div class="stat-label">Assigned</div>
+                                    <div class="stat-number text-success"><?php echo $recentlyAssigned; ?></div>
+                                    <div class="stat-label">Recently Assigned</div>
                                 </div>
                             </div>
                             <div class="col-md-3 text-center">
                                 <div class="stat-item">
-                                    <div class="stat-number text-warning"><?php echo isset($systemsByStatus[1]) ? $systemsByStatus[1]['count'] : 0; ?></div>
-                                    <div class="stat-label">Unassigned</div>
+                                    <div class="stat-number text-warning"><?php echo $systemsInRepair; ?></div>
+                                    <div class="stat-label">In Repair</div>
                                 </div>
                             </div>
                             <div class="col-md-3 text-center">
                                 <div class="stat-item">
-                                    <div class="stat-number text-info"><?php echo round(($totalSystems > 0 ? (isset($systemsByStatus[0]) ? $systemsByStatus[0]['count'] : 0) / $totalSystems : 0) * 100, 1); ?>%</div>
-                                    <div class="stat-label">Utilization</div>
+                                    <div class="stat-number text-info"><?php echo $availableSystems; ?></div>
+                                    <div class="stat-label">Available</div>
                                 </div>
                             </div>
                         </div>
@@ -203,18 +301,8 @@ include 'includes/sidebar.php';
                         </div>
                         
                         <!-- Chart Legend -->
-                        <div class="chart-legend mt-3">
-                            <div class="row">
-                                <?php foreach ($systemsByStatus as $status): ?>
-                                    <div class="col-md-6 mb-2">
-                                        <div class="legend-item d-flex align-items-center">
-                                            <div class="legend-color me-2" style="width: 12px; height: 12px; border-radius: 50%; background-color: <?php echo $status['status'] == 'Assigned' ? '#10b981' : '#f59e0b'; ?>;"></div>
-                                            <span class="legend-label"><?php echo htmlspecialchars($status['status']); ?></span>
-                                            <span class="legend-count ms-auto fw-bold"><?php echo $status['count']; ?></span>
-                                        </div>
-                                    </div>
-                                <?php endforeach; ?>
-                            </div>
+                        <div class="chart-legend mt-3" id="chartLegend">
+                            <!-- Legend will be populated by JavaScript -->
                         </div>
                     </div>
                 </div>
@@ -381,73 +469,164 @@ include 'includes/sidebar.php';
 </div>
 
 <script>
-// Systems Status Chart
+// Chart data from PHP
+const systemsByStatus = <?php echo json_encode($systemsByStatus); ?>;
+const systemsByType = <?php echo json_encode($systemsByType); ?>;
+const systemsByBranch = <?php echo json_encode($systemsByBranch); ?>;
+const departmentDistribution = <?php echo json_encode($departmentDistribution); ?>;
+
+let currentChart = null;
+let currentChartType = 'status';
+
+// Chart colors
+const statusColors = ['#10b981', '#f59e0b', '#ef4444', '#6b7280'];
+const typeColors = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444'];
+const branchColors = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#f97316'];
+const departmentColors = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4'];
+
+// Initialize charts
+document.addEventListener('DOMContentLoaded', function() {
+    initializeCharts();
+});
+
+function initializeCharts() {
+    // Initialize main chart
+    switchChart('status');
+}
+
+function switchChart(type) {
+    currentChartType = type;
+    
+    // Update button states
+    document.querySelectorAll('.chart-controls button').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    document.getElementById('btn-' + type).classList.add('active');
+    
+    // Destroy existing chart
+    if (currentChart) {
+        currentChart.destroy();
+    }
+    
 const ctx = document.getElementById('systemsStatusChart').getContext('2d');
-const systemsData = <?php echo json_encode($systemsByStatus); ?>;
-
-const labels = systemsData.map(item => item.status);
-const data = systemsData.map(item => item.count);
-const colors = ['#28a745', '#ffc107', '#dc3545'];
-
-new Chart(ctx, {
+    let chartData, chartLabels, chartColors, chartTitle;
+    
+    switch(type) {
+        case 'status':
+            chartData = systemsByStatus.map(item => item.count);
+            chartLabels = systemsByStatus.map(item => item.status);
+            chartColors = statusColors;
+            chartTitle = 'Systems by Status';
+            break;
+        case 'type':
+            chartData = systemsByType.map(item => item.count);
+            chartLabels = systemsByType.map(item => item.type);
+            chartColors = typeColors;
+            chartTitle = 'Systems by Type';
+            break;
+        case 'branch':
+            chartData = systemsByBranch.map(item => item.system_count);
+            chartLabels = systemsByBranch.map(item => item.branch_name);
+            chartColors = branchColors;
+            chartTitle = 'Systems by Branch';
+            break;
+        case 'department':
+            chartData = departmentDistribution.map(item => item.system_count);
+            chartLabels = departmentDistribution.map(item => item.department || 'Unknown');
+            chartColors = departmentColors;
+            chartTitle = 'Systems by Department';
+            break;
+    }
+    
+    currentChart = new Chart(ctx, {
     type: 'doughnut',
     data: {
-        labels: labels,
+            labels: chartLabels,
         datasets: [{
-            data: data,
-            backgroundColor: ['#10b981', '#f59e0b', '#ef4444'],
-            borderWidth: 3,
-            borderColor: '#ffffff',
-            hoverBorderWidth: 4,
-            hoverBorderColor: '#ffffff'
+                data: chartData,
+                backgroundColor: chartColors,
+                borderWidth: 3,
+                borderColor: '#ffffff',
+                hoverBorderWidth: 4,
+                hoverBorderColor: '#ffffff'
         }]
     },
     options: {
         responsive: true,
         maintainAspectRatio: false,
-        cutout: '60%',
+            cutout: '60%',
         plugins: {
             legend: {
-                display: false
-            },
-            tooltip: {
-                backgroundColor: 'rgba(0, 0, 0, 0.8)',
-                titleColor: '#ffffff',
-                bodyColor: '#ffffff',
-                borderColor: '#ffffff',
-                borderWidth: 1,
-                cornerRadius: 8,
-                displayColors: true,
-                callbacks: {
-                    label: function(context) {
-                        const total = context.dataset.data.reduce((a, b) => a + b, 0);
-                        const percentage = ((context.parsed / total) * 100).toFixed(1);
-                        return context.label + ': ' + context.parsed + ' (' + percentage + '%)';
+                    display: false
+                },
+                title: {
+                    display: true,
+                    text: chartTitle,
+                    font: {
+                        size: 16,
+                        weight: 'bold'
+                    },
+                    color: '#374151'
+                },
+                tooltip: {
+                    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                    titleColor: '#ffffff',
+                    bodyColor: '#ffffff',
+                    borderColor: '#ffffff',
+                    borderWidth: 1,
+                    cornerRadius: 8,
+                    displayColors: true,
+                    callbacks: {
+                        label: function(context) {
+                            const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                            const percentage = ((context.parsed / total) * 100).toFixed(1);
+                            return context.label + ': ' + context.parsed + ' (' + percentage + '%)';
+                        }
                     }
                 }
-            }
-        },
-        animation: {
-            animateRotate: true,
-            animateScale: true,
-            duration: 2000,
-            easing: 'easeOutQuart'
+            },
+            animation: {
+                animateRotate: true,
+                animateScale: true,
+                duration: 2000,
+                easing: 'easeOutQuart'
         }
     }
 });
+    
+    // Update legend
+    updateChartLegend(chartLabels, chartData, chartColors);
+}
+
+function updateChartLegend(labels, data, colors) {
+    const legendContainer = document.getElementById('chartLegend');
+    legendContainer.innerHTML = '';
+    
+    labels.forEach((label, index) => {
+        const legendItem = document.createElement('div');
+        legendItem.className = 'd-inline-block me-3 mb-2';
+        legendItem.innerHTML = `
+            <span class="me-2" style="display: inline-block; width: 12px; height: 12px; background-color: ${colors[index]}; border-radius: 50%;"></span>
+            <span class="text-muted">${label}: ${data[index]}</span>
+        `;
+        legendContainer.appendChild(legendItem);
+    });
+}
 
 // Chart Functions
 function refreshChart() {
-    location.reload();
+    // Reload the page to refresh data
+    window.location.reload();
 }
 
 function exportChart() {
-    const canvas = document.getElementById('systemsStatusChart');
-    const url = canvas.toDataURL('image/png');
-    const link = document.createElement('a');
-    link.download = 'systems-status-chart.png';
-    link.href = url;
-    link.click();
+    if (currentChart) {
+        const url = currentChart.toBase64Image();
+        const link = document.createElement('a');
+        link.download = 'systems-chart-' + currentChartType + '.png';
+        link.href = url;
+        link.click();
+    }
 }
 </script>
 
@@ -485,6 +664,68 @@ function exportChart() {
             border-radius: 12px;
             padding: 20px;
             border: 1px solid rgba(0, 0, 0, 0.05);
+        }
+
+        .chart-controls .btn {
+            margin-right: 0.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .chart-controls .btn.active {
+            background-color: var(--primary-color);
+            border-color: var(--primary-color);
+            color: white;
+        }
+
+        .chart-legend {
+            text-align: center;
+            padding: 1rem 0;
+        }
+
+        /* Clickable Dashboard Cards */
+        .dashboard-card-link {
+            text-decoration: none;
+            color: inherit;
+            display: block;
+        }
+
+        .dashboard-card-link:hover {
+            text-decoration: none;
+            color: inherit;
+        }
+
+        .clickable-card {
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .clickable-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15) !important;
+        }
+
+        .clickable-card:hover .card-body {
+            background: linear-gradient(135deg, rgba(79, 70, 229, 0.05) 0%, rgba(79, 70, 229, 0.02) 100%);
+        }
+
+        .clickable-card:hover .text-primary {
+            color: #4f46e5 !important;
+        }
+
+        .clickable-card:hover .text-success {
+            color: #10b981 !important;
+        }
+
+        .clickable-card:hover .text-info {
+            color: #06b6d4 !important;
+        }
+
+        .clickable-card:hover .text-warning {
+            color: #f59e0b !important;
+        }
+
+        .clickable-card:hover .text-gray-300 {
+            color: #9ca3af !important;
         }
 
         .chart-legend {
@@ -577,6 +818,42 @@ function exportChart() {
 [data-theme="dark"] .chart-container {
     background: linear-gradient(135deg, var(--card-bg) 0%, var(--card-hover) 100%);
     border: 1px solid var(--border-color);
+}
+
+[data-theme="dark"] .chart-controls .btn.active {
+    background-color: var(--primary-color);
+    border-color: var(--primary-color);
+    color: white;
+}
+
+/* Dark Mode Clickable Cards */
+[data-theme="dark"] .clickable-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 25px rgba(79, 70, 229, 0.3) !important;
+}
+
+[data-theme="dark"] .clickable-card:hover .card-body {
+    background: linear-gradient(135deg, rgba(79, 70, 229, 0.1) 0%, rgba(79, 70, 229, 0.05) 100%);
+}
+
+[data-theme="dark"] .clickable-card:hover .text-primary {
+    color: var(--primary-color) !important;
+}
+
+[data-theme="dark"] .clickable-card:hover .text-success {
+    color: #10b981 !important;
+}
+
+[data-theme="dark"] .clickable-card:hover .text-info {
+    color: #06b6d4 !important;
+}
+
+[data-theme="dark"] .clickable-card:hover .text-warning {
+    color: #f59e0b !important;
+}
+
+[data-theme="dark"] .clickable-card:hover .text-gray-300 {
+    color: var(--text-muted) !important;
 }
 
 [data-theme="dark"] .chart-legend {
