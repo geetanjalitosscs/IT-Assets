@@ -12,8 +12,8 @@
     <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     
-    <!-- Auto-refresh JS -->
-    <script src="js/auto-refresh.js"></script>
+    <!-- Professional Notification System -->
+    <script src="js/notifications.js"></script>
     
     <!-- Custom JS -->
     <script>
@@ -52,11 +52,6 @@
                 sidebar.classList.remove('show');
             }
         });
-        
-        // Auto-hide alerts after 5 seconds
-        setTimeout(function() {
-            $('.alert').fadeOut('slow');
-        }, 5000);
         
         // Confirm delete actions
         function confirmDelete(message = 'Are you sure you want to delete this item?') {

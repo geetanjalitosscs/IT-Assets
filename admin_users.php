@@ -43,6 +43,17 @@ if ($_POST) {
                     $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
                     $stmt = $pdo->prepare("INSERT INTO users (id, username, password, role, branch_id, full_name, email) VALUES (?, ?, ?, ?, ?, ?, ?)");
                     $stmt->execute([$next_id, $username, $hashedPassword, $role, $branchId, $full_name, $email]);
+                    
+                    // Log the user addition activity
+                    $stmt = $pdo->prepare("INSERT INTO activity_log (activity_type, entity_id, entity_name, description, branch_id) VALUES (?, ?, ?, ?, ?)");
+                    $stmt->execute([
+                        'user_add',
+                        $next_id,
+                        $username,
+                        'New user ' . $full_name . ' (' . $username . ') added as ' . $role,
+                        $branchId
+                    ]);
+                    
                     $message = 'User added successfully with ID: ' . $next_id;
                 }
             } catch (Exception $e) {
@@ -77,6 +88,23 @@ if ($_POST) {
     } elseif ($action === 'delete') {
         $id = $_POST['id'];
         try {
+            // Get user info before deletion for logging
+            $stmt = $pdo->prepare("SELECT username, full_name FROM users WHERE id = ? AND branch_id = ?");
+            $stmt->execute([$id, $branchId]);
+            $userInfo = $stmt->fetch();
+            
+            if ($userInfo) {
+                // Log the deletion activity
+                $stmt = $pdo->prepare("INSERT INTO activity_log (activity_type, entity_id, entity_name, description, branch_id) VALUES (?, ?, ?, ?, ?)");
+                $stmt->execute([
+                    'user_delete',
+                    $id,
+                    $userInfo['username'],
+                    'User ' . $userInfo['full_name'] . ' (' . $userInfo['username'] . ') deleted',
+                    $branchId
+                ]);
+            }
+            
             // First, delete the user
             $stmt = $pdo->prepare("DELETE FROM users WHERE id = ? AND branch_id = ? AND id != ?");
             $stmt->execute([$id, $branchId, $_SESSION['user_id']]);
@@ -231,42 +259,65 @@ $branch = $stmt->fetch();
 
 <!-- Add User Modal -->
 <div class="modal fade" id="addUserModal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content" style="border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.15);">
             <form method="POST">
-                <div class="modal-header">
-                    <h5 class="modal-title">Add New User</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                <div class="modal-header" style="background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%); border-radius: 15px 15px 0 0; border: none;">
+                    <h5 class="modal-title text-white">
+                        <i class="fas fa-user-plus me-2"></i>Add New User
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
                     <input type="hidden" name="action" value="add">
-                    <div class="mb-3">
-                        <label for="username" class="form-label">Username *</label>
-                        <input type="text" class="form-control" id="username" name="username" required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="password" class="form-label">Password *</label>
-                        <input type="password" class="form-control" id="password" name="password" required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="full_name" class="form-label">Full Name *</label>
-                        <input type="text" class="form-control" id="full_name" name="full_name" required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="email" class="form-label">Email *</label>
-                        <input type="email" class="form-control" id="email" name="email" required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="role" class="form-label">Role</label>
-                        <select class="form-select" id="role" name="role">
-                            <option value="branch_admin">Branch Admin</option>
-                            <option value="user">User</option>
-                        </select>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="username" class="form-label">Username <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="username" name="username" required>
+                                <small class="form-text text-muted">Enter a unique username</small>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="password" class="form-label">Password <span class="text-danger">*</span></label>
+                                <input type="password" class="form-control" id="password" name="password" required>
+                                <small class="form-text text-muted">Enter a secure password</small>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="full_name" class="form-label">Full Name <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="full_name" name="full_name" required>
+                                <small class="form-text text-muted">Enter the user's full name</small>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="email" class="form-label">Email <span class="text-danger">*</span></label>
+                                <input type="email" class="form-control" id="email" name="email" required>
+                                <small class="form-text text-muted">Enter a valid email address</small>
+                            </div>
+                        </div>
+                        <div class="col-md-12">
+                            <div class="mb-3">
+                                <label for="role" class="form-label">Role</label>
+                                <select class="form-select" id="role" name="role">
+                                    <option value="branch_admin">Branch Admin</option>
+                                    <option value="user">User</option>
+                                </select>
+                                <small class="form-text text-muted">Select the user's access level</small>
+                            </div>
+                        </div>
                     </div>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Add User</button>
+                <div class="modal-footer" style="border-top: 1px solid #e9ecef; background: #f8f9fa; border-radius: 0 0 15px 15px;">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times me-2"></i>Cancel
+                    </button>
+                    <button type="submit" class="btn btn-primary" style="background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%); border: none; box-shadow: 0 4px 15px rgba(30, 64, 175, 0.3);">
+                        <i class="fas fa-user-plus me-2"></i>Add User
+                    </button>
                 </div>
             </form>
         </div>
@@ -384,6 +435,29 @@ function deleteUser(userId, username) {
     document.getElementById('delete_username').textContent = username;
     new bootstrap.Modal(document.getElementById('deleteUserModal')).show();
 }
+
+// Clear form fields when modals are closed
+document.addEventListener('DOMContentLoaded', function() {
+    // Clear Add User Modal
+    const addModal = document.getElementById('addUserModal');
+    addModal.addEventListener('hidden.bs.modal', function() {
+        document.getElementById('addUserModal').querySelector('form').reset();
+        // Reset role to default
+        document.getElementById('role').value = 'branch_admin';
+    });
+    
+    // Clear Edit User Modal
+    const editModal = document.getElementById('editUserModal');
+    editModal.addEventListener('hidden.bs.modal', function() {
+        document.getElementById('editUserModal').querySelector('form').reset();
+    });
+    
+    // Clear Reset Password Modal
+    const resetModal = document.getElementById('resetPasswordModal');
+    resetModal.addEventListener('hidden.bs.modal', function() {
+        document.getElementById('resetPasswordModal').querySelector('form').reset();
+    });
+});
 </script>
 
 <?php include 'includes/sidebar.php'; ?>

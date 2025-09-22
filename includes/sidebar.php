@@ -31,6 +31,7 @@ $currentPage = basename($_SERVER['PHP_SELF']);
                     <span>Users</span>
                 </a>
             </li>
+            
             <?php endif; ?>
             
             <!-- Systems -->
@@ -76,7 +77,7 @@ $currentPage = basename($_SERVER['PHP_SELF']);
     position: fixed;
     top: var(--header-height);
     left: 0;
-    width: var(--sidebar-width);
+    width: 220px;
     height: calc(100vh - var(--header-height));
     background: white;
     box-shadow: 2px 0 10px rgba(0,0,0,0.1);

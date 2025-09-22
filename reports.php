@@ -67,31 +67,6 @@ if ($_POST && isset($_POST['action']) && $_POST['action'] == 'generate_report') 
             $filename = 'employees_report_' . date('Y-m-d');
             break;
             
-        case 'peripherals':
-            if (isSuperAdmin()) {
-                $stmt = $pdo->query("
-                    SELECT p.name, p.type, p.brand, p.model, p.serial_number, p.status,
-                           s.system_code, b.name as branch_name
-                    FROM peripherals p
-                    LEFT JOIN systems s ON p.system_id = s.id
-                    LEFT JOIN branches b ON s.branch_id = b.id
-                    ORDER BY p.type, p.name
-                ");
-            } else {
-                $stmt = $pdo->prepare("
-                    SELECT p.name, p.type, p.brand, p.model, p.serial_number, p.status,
-                           s.system_code, b.name as branch_name
-                    FROM peripherals p
-                    LEFT JOIN systems s ON p.system_id = s.id
-                    LEFT JOIN branches b ON s.branch_id = b.id
-                    WHERE s.branch_id = ? OR p.system_id IS NULL
-                    ORDER BY p.type, p.name
-                ");
-                $stmt->execute([getCurrentUserBranch()]);
-            }
-            $data = $stmt->fetchAll();
-            $filename = 'peripherals_report_' . date('Y-m-d');
-            break;
             
         case 'system_history':
             if (isSuperAdmin()) {
@@ -233,9 +208,6 @@ include 'includes/sidebar.php';
     background: linear-gradient(135deg, #16a34a 0%, #22c55e 100%);
 }
 
-.peripherals-icon {
-    background: linear-gradient(135deg, #0ea5e9 0%, #06b6d4 100%);
-}
 
 .history-icon {
     background: linear-gradient(135deg, #f59e0b 0%, #f97316 100%);
@@ -343,6 +315,162 @@ include 'includes/sidebar.php';
         align-self: flex-end;
     }
 }
+
+/* Dark Mode Reports Styling */
+[data-theme="dark"] .report-card {
+    background: linear-gradient(135deg, var(--card-bg) 0%, var(--card-hover) 100%);
+    border: 1px solid var(--border-color);
+    color: var(--text-color);
+    box-shadow: 0 4px 20px rgba(79, 70, 229, 0.1);
+}
+
+[data-theme="dark"] .report-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 30px rgba(79, 70, 229, 0.2);
+    border-color: var(--primary-color);
+}
+
+[data-theme="dark"] .report-card::before {
+    background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+}
+
+[data-theme="dark"] .report-card:hover::before {
+    opacity: 0.1;
+}
+
+[data-theme="dark"] .report-title {
+    color: var(--text-color);
+}
+
+[data-theme="dark"] .report-description {
+    color: var(--text-muted);
+}
+
+[data-theme="dark"] .feature-tag {
+    background: var(--card-hover);
+    color: var(--text-color);
+    border: 1px solid var(--border-color);
+}
+
+[data-theme="dark"] .feature-tag:hover {
+    background: var(--primary-color);
+    color: white;
+    border-color: var(--primary-color);
+}
+
+/* Dark Mode Report Icons */
+[data-theme="dark"] .report-icon.systems-icon {
+    background: linear-gradient(135deg, rgba(79, 70, 229, 0.2) 0%, rgba(99, 102, 241, 0.1) 100%);
+    color: var(--primary-color);
+}
+
+[data-theme="dark"] .report-icon.employees-icon {
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.2) 0%, rgba(34, 197, 94, 0.1) 100%);
+    color: #10b981;
+}
+
+[data-theme="dark"] .report-icon.history-icon {
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.2) 0%, rgba(251, 191, 36, 0.1) 100%);
+    color: #f59e0b;
+}
+
+/* Dark Mode Available Reports Section */
+[data-theme="dark"] .card {
+    background: linear-gradient(135deg, var(--card-bg) 0%, var(--card-hover) 100%);
+    border: 1px solid var(--border-color);
+}
+
+[data-theme="dark"] .card-header {
+    background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+    border-color: var(--border-color);
+}
+
+[data-theme="dark"] .card-body {
+    background: transparent;
+}
+
+/* Dark Mode Modal Styling */
+[data-theme="dark"] .modal-content {
+    background: linear-gradient(135deg, var(--card-bg) 0%, var(--card-hover) 100%);
+    border: 1px solid var(--border-color);
+    color: var(--text-color);
+}
+
+[data-theme="dark"] .modal-header {
+    background: linear-gradient(135deg, var(--gradient-start) 0%, var(--gradient-end) 100%);
+    border-color: var(--border-color);
+}
+
+[data-theme="dark"] .modal-body {
+    background: transparent;
+    color: var(--text-color);
+}
+
+[data-theme="dark"] .modal-footer {
+    background: transparent;
+    border-color: var(--border-color);
+}
+
+[data-theme="dark"] .modal-title {
+    color: white;
+}
+
+[data-theme="dark"] .btn-close {
+    filter: invert(1);
+}
+
+/* Dark Mode Form Elements */
+[data-theme="dark"] .form-control {
+    background-color: var(--card-bg);
+    border-color: var(--border-color);
+    color: var(--text-color);
+}
+
+[data-theme="dark"] .form-control:focus {
+    background-color: var(--card-bg);
+    border-color: var(--primary-color);
+    color: var(--text-color);
+    box-shadow: 0 0 0 0.2rem rgba(79, 70, 229, 0.25);
+}
+
+[data-theme="dark"] .form-select {
+    background-color: var(--card-bg);
+    border-color: var(--border-color);
+    color: var(--text-color);
+}
+
+[data-theme="dark"] .form-select:focus {
+    background-color: var(--card-bg);
+    border-color: var(--primary-color);
+    color: var(--text-color);
+    box-shadow: 0 0 0 0.2rem rgba(79, 70, 229, 0.25);
+}
+
+[data-theme="dark"] .form-select option {
+    background-color: var(--card-bg);
+    color: var(--text-color);
+}
+
+/* Dark Mode Statistics Cards */
+[data-theme="dark"] .stat-card {
+    background: linear-gradient(135deg, var(--card-bg) 0%, var(--card-hover) 100%);
+    border: 1px solid var(--border-color);
+    color: var(--text-color);
+}
+
+[data-theme="dark"] .stat-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(79, 70, 229, 0.2);
+    border-color: var(--primary-color);
+}
+
+[data-theme="dark"] .stat-number {
+    color: var(--primary-color);
+}
+
+[data-theme="dark"] .stat-label {
+    color: var(--text-muted);
+}
 </style>
 
 <div class="main-content">
@@ -381,7 +509,6 @@ include 'includes/sidebar.php';
                                             <option value="">Select Report Type</option>
                                             <option value="systems">Systems Report</option>
                                             <option value="employees">Employees Report</option>
-                                            <option value="peripherals">Peripherals Report</option>
                                             <option value="system_history">System History Report</option>
                                         </select>
                                     </div>
@@ -426,8 +553,6 @@ include 'includes/sidebar.php';
                             $stmt = $pdo->query("SELECT COUNT(*) FROM employees");
                             $totalEmployees = $stmt->fetchColumn();
                             
-                            $stmt = $pdo->query("SELECT COUNT(*) FROM peripherals");
-                            $totalPeripherals = $stmt->fetchColumn();
                             
                             $stmt = $pdo->query("SELECT COUNT(*) FROM branches");
                             $totalBranches = $stmt->fetchColumn();
@@ -440,9 +565,6 @@ include 'includes/sidebar.php';
                             $stmt->execute([getCurrentUserBranch()]);
                             $totalEmployees = $stmt->fetchColumn();
                             
-                            $stmt = $pdo->prepare("SELECT COUNT(*) FROM peripherals p JOIN systems s ON p.system_id = s.id WHERE s.branch_id = ?");
-                            $stmt->execute([getCurrentUserBranch()]);
-                            $totalPeripherals = $stmt->fetchColumn();
                         }
                         ?>
                         
@@ -459,14 +581,8 @@ include 'includes/sidebar.php';
                                     <small class="text-muted">Employees</small>
                                 </div>
                             </div>
-                            <div class="col-6 mb-3">
-                                <div class="border rounded p-3">
-                                    <h4 class="text-info mb-1"><?php echo $totalPeripherals; ?></h4>
-                                    <small class="text-muted">Peripherals</small>
-                                </div>
-                            </div>
                             <?php if (isSuperAdmin()): ?>
-                                <div class="col-6 mb-3">
+                                <div class="col-12 mb-3">
                                     <div class="border rounded p-3">
                                         <h4 class="text-warning mb-1"><?php echo $totalBranches; ?></h4>
                                         <small class="text-muted">Branches</small>
@@ -489,7 +605,7 @@ include 'includes/sidebar.php';
                                 <i class="fas fa-chart-line"></i>
                             </div>
                             Available Reports
-                            <span class="badge bg-light text-primary ms-auto">4 Reports</span>
+                            <span class="badge bg-light text-primary ms-auto">3 Reports</span>
                         </h6>
                     </div>
                     <div class="card-body p-4">
@@ -540,31 +656,9 @@ include 'includes/sidebar.php';
                                 </div>
                             </div>
                             
-                            <!-- Peripherals Report -->
-                            <div class="col-lg-6 col-md-12">
-                                <div class="report-card h-100">
-                                    <div class="report-card-header">
-                                        <div class="report-icon peripherals-icon">
-                                            <i class="fas fa-keyboard"></i>
-                                        </div>
-                                        <div class="report-badge">
-                                            <span class="badge bg-info">Inventory</span>
-                                        </div>
-                                    </div>
-                                    <div class="report-card-body">
-                                        <h5 class="report-title">Peripherals Report</h5>
-                                        <p class="report-description">Detailed inventory of all peripheral devices including keyboards, mice, monitors, printers, and other accessories with their technical specifications and current assignments.</p>
-                                        <div class="report-features">
-                                            <span class="feature-tag">Device Types</span>
-                                            <span class="feature-tag">Specifications</span>
-                                            <span class="feature-tag">Assignments</span>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
                             
                             <!-- System History Report -->
-                            <div class="col-lg-6 col-md-12">
+                            <div class="col-lg-12 col-md-12">
                                 <div class="report-card h-100">
                                     <div class="report-card-header">
                                         <div class="report-icon history-icon">

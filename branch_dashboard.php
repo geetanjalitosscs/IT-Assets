@@ -261,6 +261,27 @@ new Chart(ctx, {
     position: relative;
     height: 15rem;
 }
+
+/* Dark Mode Dashboard Styling */
+[data-theme="dark"] .border-left-primary {
+    border-left: 0.25rem solid var(--primary-color) !important;
+}
+
+[data-theme="dark"] .border-left-success {
+    border-left: 0.25rem solid #10b981 !important;
+}
+
+[data-theme="dark"] .border-left-info {
+    border-left: 0.25rem solid #06b6d4 !important;
+}
+
+[data-theme="dark"] .text-gray-300 {
+    color: var(--text-muted) !important;
+}
+
+[data-theme="dark"] .text-gray-800 {
+    color: var(--text-color) !important;
+}
 </style>
 
 <?php include 'includes/footer.php'; ?>

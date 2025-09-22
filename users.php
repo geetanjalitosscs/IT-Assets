@@ -37,7 +37,18 @@ if ($_POST) {
                         $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
                         $stmt = $pdo->prepare("INSERT INTO users (id, username, password, role, branch_id, full_name, email) VALUES (?, ?, ?, ?, ?, ?, ?)");
                         $stmt->execute([$next_id, $username, $hashedPassword, $role, $branchId, $fullName, $email]);
-                        $success = "User added successfully with ID: " . $next_id;
+                        
+                        // Log the user addition activity
+                        $stmt = $pdo->prepare("INSERT INTO activity_log (activity_type, entity_id, entity_name, description, branch_id) VALUES (?, ?, ?, ?, ?)");
+                        $stmt->execute([
+                            'user_add',
+                            $next_id,
+                            $username,
+                            'New user ' . $fullName . ' (' . $username . ') added as ' . $role,
+                            $branchId
+                        ]);
+                        
+                        $success = "User added successfully";
                     } else {
                         $error = "Username already exists!";
                     }
@@ -68,7 +79,18 @@ if ($_POST) {
                             $stmt = $pdo->prepare("UPDATE users SET username = ?, role = ?, branch_id = ?, full_name = ?, email = ? WHERE id = ?");
                             $stmt->execute([$username, $role, $branchId, $fullName, $email, $id]);
                         }
-                        $success = "User updated successfully!";
+                        
+                        // Log the user edit activity
+                        $stmt = $pdo->prepare("INSERT INTO activity_log (activity_type, entity_id, entity_name, description, branch_id) VALUES (?, ?, ?, ?, ?)");
+                        $stmt->execute([
+                            'user_edit',
+                            $id,
+                            $username,
+                            'User ' . $fullName . ' (' . $username . ') updated',
+                            $branchId
+                        ]);
+                        
+                        $success = "User updated successfully";
                     } else {
                         $error = "Username already exists!";
                     }
@@ -83,6 +105,23 @@ if ($_POST) {
                 if ($id == $_SESSION['user_id']) {
                     $error = "You cannot delete your own account!";
                 } else {
+                    // Get user info before deletion for logging
+                    $stmt = $pdo->prepare("SELECT username, full_name, branch_id FROM users WHERE id = ?");
+                    $stmt->execute([$id]);
+                    $userInfo = $stmt->fetch();
+                    
+                    if ($userInfo) {
+                        // Log the deletion activity
+                        $stmt = $pdo->prepare("INSERT INTO activity_log (activity_type, entity_id, entity_name, description, branch_id) VALUES (?, ?, ?, ?, ?)");
+                        $stmt->execute([
+                            'user_delete',
+                            $id,
+                            $userInfo['username'],
+                            'User ' . $userInfo['full_name'] . ' (' . $userInfo['username'] . ') deleted',
+                            $userInfo['branch_id']
+                        ]);
+                    }
+                    
                     // First, delete the user
                     $stmt = $pdo->prepare("DELETE FROM users WHERE id = ?");
                     $stmt->execute([$id]);
@@ -102,7 +141,7 @@ if ($_POST) {
                         $new_id++;
                     }
                     
-                    $success = "User deleted successfully and IDs reordered!";
+                    $success = "User deleted successfully";
                 }
                 break;
         }
@@ -230,13 +269,13 @@ include 'includes/sidebar.php';
 
 <!-- Add User Modal -->
 <div class="modal fade" id="addUserModal" tabindex="-1">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">
-                    <i class="fas fa-plus me-2"></i>Add New User
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content" style="border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.15);">
+            <div class="modal-header" style="background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%); border-radius: 15px 15px 0 0; border: none;">
+                <h5 class="modal-title text-white">
+                    <i class="fas fa-user-plus me-2"></i>Add New User
                 </h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <form method="POST">
                 <div class="modal-body">
@@ -290,8 +329,12 @@ include 'includes/sidebar.php';
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Add User</button>
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times me-2"></i>Cancel
+                    </button>
+                    <button type="submit" class="btn btn-primary" style="background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%); border: none; box-shadow: 0 4px 15px rgba(30, 64, 175, 0.3);">
+                        <i class="fas fa-user-plus me-2"></i>Add User
+                    </button>
                 </div>
             </form>
         </div>
@@ -446,6 +489,85 @@ function deleteUser(id, name) {
     const deleteModal = new bootstrap.Modal(document.getElementById('deleteUserModal'));
     deleteModal.show();
 }
+
+// Clear form fields when modals are closed
+document.addEventListener('DOMContentLoaded', function() {
+    // Clear Add User Modal
+    const addModal = document.getElementById('addUserModal');
+    addModal.addEventListener('hidden.bs.modal', function() {
+        document.getElementById('addUserModal').querySelector('form').reset();
+        // Reset role to default and hide branch field
+        document.getElementById('role').value = 'super_admin';
+        toggleBranchField();
+    });
+    
+    // Clear Edit User Modal
+    const editModal = document.getElementById('editUserModal');
+    editModal.addEventListener('hidden.bs.modal', function() {
+        document.getElementById('editUserModal').querySelector('form').reset();
+    });
+});
 </script>
+
+<style>
+/* Modal Dark Mode Styling */
+.modal-footer {
+    border-top: 1px solid #e9ecef;
+    background: #f8f9fa;
+    border-radius: 0 0 15px 15px;
+}
+
+[data-theme="dark"] .modal-content {
+    background: linear-gradient(135deg, var(--card-bg) 0%, var(--card-hover) 100%);
+    border: 1px solid var(--border-color);
+    color: var(--text-color);
+}
+
+[data-theme="dark"] .modal-header {
+    background: linear-gradient(135deg, var(--gradient-start) 0%, var(--gradient-end) 100%);
+    border-color: var(--border-color);
+}
+
+[data-theme="dark"] .modal-body {
+    background: transparent;
+    color: var(--text-color);
+}
+
+[data-theme="dark"] .modal-footer {
+    background: linear-gradient(135deg, var(--card-bg) 0%, var(--card-hover) 100%);
+    border-top: 1px solid var(--border-color);
+}
+
+[data-theme="dark"] .modal-title {
+    color: white;
+}
+
+[data-theme="dark"] .btn-close {
+    filter: invert(1);
+}
+
+[data-theme="dark"] .form-label {
+    color: var(--text-color);
+}
+
+[data-theme="dark"] .form-text {
+    color: var(--text-muted);
+}
+
+[data-theme="dark"] .text-muted {
+    color: var(--text-muted);
+}
+
+[data-theme="dark"] .btn-outline-secondary {
+    border-color: var(--border-color);
+    color: var(--text-color);
+}
+
+[data-theme="dark"] .btn-outline-secondary:hover {
+    background-color: var(--card-hover);
+    border-color: var(--border-color);
+    color: var(--text-color);
+}
+</style>
 
 <?php include 'includes/footer.php'; ?>

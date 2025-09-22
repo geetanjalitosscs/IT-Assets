@@ -34,9 +34,22 @@ $totalEmployees = $stmt->fetchColumn();
 $stmt = $pdo->query("SELECT status, COUNT(*) as count FROM systems GROUP BY status");
 $systemsByStatus = $stmt->fetchAll();
 
-// Recent activities
+// Recent activities - Get comprehensive recent activities from activity_log
 $stmt = $pdo->query("
-    SELECT 'system' as type, s.system_code, e.full_name as employee_name, b.name as branch_name, sh.assigned_date
+    SELECT al.activity_type as type, al.entity_name, al.description, b.name as branch_name, al.created_at as activity_date
+    FROM activity_log al
+    LEFT JOIN branches b ON al.branch_id = b.id
+    WHERE al.created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)
+    ORDER BY al.created_at DESC
+    LIMIT 10
+");
+$recentActivities = $stmt->fetchAll();
+
+// If no activities in activity_log, fall back to system_history for assignments
+if (empty($recentActivities)) {
+$stmt = $pdo->query("
+        SELECT 'assignment' as type, s.system_code as entity_name, e.full_name as employee_name, b.name as branch_name, sh.assigned_date as activity_date,
+               CONCAT('System ', s.system_code, ' assigned to ', e.full_name) as description
     FROM system_history sh
     JOIN systems s ON sh.system_id = s.id
     JOIN employees e ON sh.employee_id = e.id
@@ -46,6 +59,7 @@ $stmt = $pdo->query("
     LIMIT 10
 ");
 $recentActivities = $stmt->fetchAll();
+}
 
 include 'includes/header.php';
 include 'includes/sidebar.php';
@@ -141,11 +155,66 @@ include 'includes/sidebar.php';
             <div class="col-xl-8 col-lg-7">
                 <div class="card shadow mb-4">
                     <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
-                        <h6 class="m-0 font-weight-bold text-white">Systems Status Overview</h6>
+                        <h6 class="m-0 font-weight-bold text-white">
+                            <i class="fas fa-chart-pie me-2"></i>Systems Status Overview
+                        </h6>
+                        <div class="dropdown">
+                            <button class="btn btn-sm btn-outline-light dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                                <i class="fas fa-cog"></i>
+                            </button>
+                            <ul class="dropdown-menu">
+                                <li><a class="dropdown-item" href="#" onclick="refreshChart()"><i class="fas fa-sync-alt me-2"></i>Refresh</a></li>
+                                <li><a class="dropdown-item" href="#" onclick="exportChart()"><i class="fas fa-download me-2"></i>Export</a></li>
+                            </ul>
+                        </div>
                     </div>
                     <div class="card-body">
-                        <div class="chart-pie pt-4 pb-2">
+                        <!-- Chart Statistics -->
+                        <div class="row mb-3">
+                            <div class="col-md-3 text-center">
+                                <div class="stat-item">
+                                    <div class="stat-number text-primary"><?php echo $totalSystems; ?></div>
+                                    <div class="stat-label">Total Systems</div>
+                                </div>
+                            </div>
+                            <div class="col-md-3 text-center">
+                                <div class="stat-item">
+                                    <div class="stat-number text-success"><?php echo isset($systemsByStatus[0]) ? $systemsByStatus[0]['count'] : 0; ?></div>
+                                    <div class="stat-label">Assigned</div>
+                                </div>
+                            </div>
+                            <div class="col-md-3 text-center">
+                                <div class="stat-item">
+                                    <div class="stat-number text-warning"><?php echo isset($systemsByStatus[1]) ? $systemsByStatus[1]['count'] : 0; ?></div>
+                                    <div class="stat-label">Unassigned</div>
+                                </div>
+                            </div>
+                            <div class="col-md-3 text-center">
+                                <div class="stat-item">
+                                    <div class="stat-number text-info"><?php echo round(($totalSystems > 0 ? (isset($systemsByStatus[0]) ? $systemsByStatus[0]['count'] : 0) / $totalSystems : 0) * 100, 1); ?>%</div>
+                                    <div class="stat-label">Utilization</div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Professional Chart -->
+                        <div class="chart-container" style="position: relative; height: 300px;">
                             <canvas id="systemsStatusChart"></canvas>
+                        </div>
+                        
+                        <!-- Chart Legend -->
+                        <div class="chart-legend mt-3">
+                            <div class="row">
+                                <?php foreach ($systemsByStatus as $status): ?>
+                                    <div class="col-md-6 mb-2">
+                                        <div class="legend-item d-flex align-items-center">
+                                            <div class="legend-color me-2" style="width: 12px; height: 12px; border-radius: 50%; background-color: <?php echo $status['status'] == 'Assigned' ? '#10b981' : '#f59e0b'; ?>;"></div>
+                                            <span class="legend-label"><?php echo htmlspecialchars($status['status']); ?></span>
+                                            <span class="legend-count ms-auto fw-bold"><?php echo $status['count']; ?></span>
+                                        </div>
+                                    </div>
+                                <?php endforeach; ?>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -163,22 +232,108 @@ include 'includes/sidebar.php';
                                 <div class="text-center text-muted py-3">
                                     <i class="fas fa-info-circle fa-2x mb-2"></i>
                                     <p>No recent activities</p>
+                                    <small>Activities will appear here as users interact with the system</small>
                                 </div>
                             <?php else: ?>
                                 <?php foreach ($recentActivities as $activity): ?>
-                                    <div class="list-group-item d-flex justify-content-between align-items-center">
-                                        <div>
-                                            <strong><?php echo htmlspecialchars($activity['system_code']); ?></strong>
-                                            <br>
-                                            <small class="text-muted">
-                                                Assigned to <?php echo htmlspecialchars($activity['employee_name']); ?>
-                                                <br>
-                                                <?php echo htmlspecialchars($activity['branch_name']); ?>
-                                            </small>
+                                    <?php
+                                    $iconClass = '';
+                                    $iconColor = '';
+                                    $iconBgClass = '';
+                                    switch($activity['type']) {
+                                        case 'assignment':
+                                            $iconClass = 'fas fa-user-plus';
+                                            $iconColor = 'success';
+                                            $iconBgClass = 'success';
+                                            break;
+                                        case 'system_add':
+                                            $iconClass = 'fas fa-desktop';
+                                            $iconColor = 'primary';
+                                            $iconBgClass = 'primary';
+                                            break;
+                                        case 'system_edit':
+                                            $iconClass = 'fas fa-edit';
+                                            $iconColor = 'warning';
+                                            $iconBgClass = 'warning';
+                                            break;
+                                        case 'system_delete':
+                                            $iconClass = 'fas fa-trash';
+                                            $iconColor = 'danger';
+                                            $iconBgClass = 'danger';
+                                            break;
+                                        case 'system_assign':
+                                            $iconClass = 'fas fa-user-plus';
+                                            $iconColor = 'success';
+                                            $iconBgClass = 'success';
+                                            break;
+                                        case 'employee_add':
+                                            $iconClass = 'fas fa-user-tie';
+                                            $iconColor = 'info';
+                                            $iconBgClass = 'info';
+                                            break;
+                                        case 'employee_edit':
+                                            $iconClass = 'fas fa-user-edit';
+                                            $iconColor = 'warning';
+                                            $iconBgClass = 'warning';
+                                            break;
+                                        case 'employee_delete':
+                                            $iconClass = 'fas fa-user-times';
+                                            $iconColor = 'danger';
+                                            $iconBgClass = 'danger';
+                                            break;
+                                        case 'user_add':
+                                            $iconClass = 'fas fa-user-cog';
+                                            $iconColor = 'warning';
+                                            $iconBgClass = 'warning';
+                                            break;
+                                        case 'user_edit':
+                                            $iconClass = 'fas fa-user-edit';
+                                            $iconColor = 'warning';
+                                            $iconBgClass = 'warning';
+                                            break;
+                                        case 'user_delete':
+                                            $iconClass = 'fas fa-user-slash';
+                                            $iconColor = 'danger';
+                                            $iconBgClass = 'danger';
+                                            break;
+                                        case 'branch_add':
+                                            $iconClass = 'fas fa-building';
+                                            $iconColor = 'success';
+                                            $iconBgClass = 'success';
+                                            break;
+                                        case 'branch_edit':
+                                            $iconClass = 'fas fa-building';
+                                            $iconColor = 'warning';
+                                            $iconBgClass = 'warning';
+                                            break;
+                                        case 'branch_delete':
+                                            $iconClass = 'fas fa-building';
+                                            $iconColor = 'danger';
+                                            $iconBgClass = 'danger';
+                                            break;
+                                        default:
+                                            $iconClass = 'fas fa-circle';
+                                            $iconColor = 'muted';
+                                            $iconBgClass = 'muted';
+                                    }
+                                    ?>
+                                    <div class="recent-activities-item d-flex align-items-start">
+                                        <div class="activity-icon <?php echo $iconBgClass; ?>">
+                                            <i class="<?php echo $iconClass; ?>"></i>
                                         </div>
-                                        <small class="text-muted">
-                                            <?php echo date('M j', strtotime($activity['assigned_date'])); ?>
-                                        </small>
+                                        <div class="activity-content">
+                                            <div class="activity-title">
+                                                <?php echo htmlspecialchars($activity['description']); ?>
+                                            </div>
+                                            <div class="activity-meta">
+                                                <span class="activity-branch">
+                                                <?php echo htmlspecialchars($activity['branch_name']); ?>
+                                                </span>
+                                                <span class="activity-time">
+                                                    <?php echo date('M j, g:i A', strtotime($activity['activity_date'])); ?>
+                                                </span>
+                                            </div>
+                                        </div>
                                     </div>
                                 <?php endforeach; ?>
                             <?php endif; ?>
@@ -240,43 +395,146 @@ new Chart(ctx, {
         labels: labels,
         datasets: [{
             data: data,
-            backgroundColor: colors,
-            borderWidth: 2,
-            borderColor: '#fff'
+            backgroundColor: ['#10b981', '#f59e0b', '#ef4444'],
+            borderWidth: 3,
+            borderColor: '#ffffff',
+            hoverBorderWidth: 4,
+            hoverBorderColor: '#ffffff'
         }]
     },
     options: {
         responsive: true,
         maintainAspectRatio: false,
+        cutout: '60%',
         plugins: {
             legend: {
-                position: 'bottom',
-                labels: {
-                    padding: 20,
-                    usePointStyle: true
+                display: false
+            },
+            tooltip: {
+                backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                titleColor: '#ffffff',
+                bodyColor: '#ffffff',
+                borderColor: '#ffffff',
+                borderWidth: 1,
+                cornerRadius: 8,
+                displayColors: true,
+                callbacks: {
+                    label: function(context) {
+                        const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                        const percentage = ((context.parsed / total) * 100).toFixed(1);
+                        return context.label + ': ' + context.parsed + ' (' + percentage + '%)';
+                    }
                 }
             }
+        },
+        animation: {
+            animateRotate: true,
+            animateScale: true,
+            duration: 2000,
+            easing: 'easeOutQuart'
         }
     }
 });
+
+// Chart Functions
+function refreshChart() {
+    location.reload();
+}
+
+function exportChart() {
+    const canvas = document.getElementById('systemsStatusChart');
+    const url = canvas.toDataURL('image/png');
+    const link = document.createElement('a');
+    link.download = 'systems-status-chart.png';
+    link.href = url;
+    link.click();
+}
 </script>
 
 <style>
-        .border-left-primary {
+        /* Enhanced Chart Styling */
+        .stat-item {
+            padding: 15px;
+            border-radius: 10px;
+            background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+            border: 1px solid rgba(0, 0, 0, 0.05);
+            transition: all 0.3s ease;
+        }
+
+        .stat-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .stat-number {
+            font-size: 1.8rem;
+            font-weight: 700;
+            margin-bottom: 5px;
+        }
+
+        .stat-label {
+            font-size: 0.85rem;
+            color: #6b7280;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .chart-container {
+            background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid rgba(0, 0, 0, 0.05);
+        }
+
+        .chart-legend {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 15px;
+        }
+
+        .legend-item {
+            padding: 8px 12px;
+            border-radius: 6px;
+            background: white;
+            margin-bottom: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+            transition: all 0.2s ease;
+        }
+
+        .legend-item:hover {
+            background: #e9ecef;
+            transform: translateX(4px);
+        }
+
+        .legend-color {
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .legend-label {
+            font-weight: 500;
+            color: #374151;
+        }
+
+        .legend-count {
+            color: var(--primary-color);
+        }
+
+.border-left-primary {
             border-left: 0.25rem solid #1e40af !important;
-        }
+}
 
-        .border-left-success {
+.border-left-success {
             border-left: 0.25rem solid #16a34a !important;
-        }
+}
 
-        .border-left-info {
+.border-left-info {
             border-left: 0.25rem solid #3b82f6 !important;
-        }
+}
 
-        .border-left-warning {
+.border-left-warning {
             border-left: 0.25rem solid #f59e0b !important;
-        }
+}
 
 .text-xs {
     font-size: 0.7rem;
@@ -293,6 +551,255 @@ new Chart(ctx, {
 .chart-pie {
     position: relative;
     height: 15rem;
+}
+
+/* Dark Mode Dashboard Styling */
+[data-theme="dark"] .stat-item {
+    background: linear-gradient(135deg, var(--card-bg) 0%, var(--card-hover) 100%);
+    border: 1px solid var(--border-color);
+    color: var(--text-color);
+}
+
+[data-theme="dark"] .stat-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(79, 70, 229, 0.2);
+    border-color: var(--primary-color);
+}
+
+[data-theme="dark"] .stat-item .stat-number {
+    color: var(--text-color) !important;
+}
+
+[data-theme="dark"] .stat-item .stat-label {
+    color: var(--text-muted) !important;
+}
+
+[data-theme="dark"] .chart-container {
+    background: linear-gradient(135deg, var(--card-bg) 0%, var(--card-hover) 100%);
+    border: 1px solid var(--border-color);
+}
+
+[data-theme="dark"] .chart-legend {
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+}
+
+[data-theme="dark"] .legend-item {
+    background: var(--card-hover);
+    border: 1px solid var(--border-color);
+    color: var(--text-color);
+    box-shadow: 0 2px 4px rgba(79, 70, 229, 0.1);
+}
+
+[data-theme="dark"] .legend-item:hover {
+    background: var(--primary-color);
+    transform: translateX(4px);
+    box-shadow: 0 2px 8px rgba(79, 70, 229, 0.2);
+}
+
+[data-theme="dark"] .legend-label {
+    color: var(--text-color);
+}
+
+[data-theme="dark"] .legend-count {
+    color: var(--secondary-color);
+}
+
+/* Dark Mode Border Colors */
+[data-theme="dark"] .border-left-primary {
+    border-left: 0.25rem solid var(--primary-color) !important;
+}
+
+[data-theme="dark"] .border-left-success {
+    border-left: 0.25rem solid #10b981 !important;
+}
+
+[data-theme="dark"] .border-left-warning {
+    border-left: 0.25rem solid #f59e0b !important;
+}
+
+[data-theme="dark"] .border-left-info {
+    border-left: 0.25rem solid #06b6d4 !important;
+}
+
+/* Dark Mode Text Colors */
+[data-theme="dark"] .text-gray-300 {
+    color: var(--text-muted) !important;
+}
+
+[data-theme="dark"] .text-gray-800 {
+    color: var(--text-color) !important;
+}
+
+/* Dark Mode Recent Activities Styling */
+[data-theme="dark"] .list-group-item {
+    background-color: var(--card-bg) !important;
+    border-color: var(--border-color) !important;
+    color: var(--text-color) !important;
+    transition: all 0.3s ease;
+}
+
+[data-theme="dark"] .list-group-item:hover {
+    background-color: var(--card-hover) !important;
+    transform: translateX(5px);
+    box-shadow: 0 2px 8px rgba(79, 70, 229, 0.1);
+}
+
+[data-theme="dark"] .list-group-item .text-dark {
+    color: var(--text-color) !important;
+}
+
+[data-theme="dark"] .list-group-item .text-muted {
+    color: var(--text-muted) !important;
+}
+
+[data-theme="dark"] .list-group-item .text-center.text-muted {
+    color: var(--text-muted) !important;
+}
+
+[data-theme="dark"] .list-group-item .text-center.text-muted i {
+    color: var(--text-muted) !important;
+}
+
+/* Dark Mode Activity Icons */
+[data-theme="dark"] .list-group-item .text-primary {
+    color: var(--primary-color) !important;
+}
+
+[data-theme="dark"] .list-group-item .text-success {
+    color: #10b981 !important;
+}
+
+[data-theme="dark"] .list-group-item .text-warning {
+    color: #f59e0b !important;
+}
+
+[data-theme="dark"] .list-group-item .text-danger {
+    color: #ef4444 !important;
+}
+
+[data-theme="dark"] .list-group-item .text-info {
+    color: #06b6d4 !important;
+}
+
+[data-theme="dark"] .list-group-item .text-muted {
+    color: var(--text-muted) !important;
+}
+
+/* Enhanced Recent Activities Styling */
+.recent-activities-item {
+    padding: 12px 16px;
+    border-radius: 8px;
+    margin-bottom: 8px;
+    transition: all 0.3s ease;
+    border-left: 3px solid transparent;
+}
+
+.recent-activities-item:hover {
+    transform: translateX(5px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+[data-theme="dark"] .recent-activities-item {
+    background: linear-gradient(135deg, var(--card-bg) 0%, var(--card-hover) 100%);
+    border-left-color: var(--primary-color);
+    box-shadow: 0 2px 8px rgba(79, 70, 229, 0.1);
+}
+
+[data-theme="dark"] .recent-activities-item:hover {
+    transform: translateX(5px);
+    box-shadow: 0 4px 12px rgba(79, 70, 229, 0.2);
+    border-left-color: var(--secondary-color);
+}
+
+.activity-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 12px;
+    transition: all 0.3s ease;
+}
+
+.activity-icon.primary {
+    background: rgba(79, 70, 229, 0.1);
+    color: var(--primary-color);
+}
+
+.activity-icon.success {
+    background: rgba(16, 185, 129, 0.1);
+    color: #10b981;
+}
+
+.activity-icon.warning {
+    background: rgba(245, 158, 11, 0.1);
+    color: #f59e0b;
+}
+
+.activity-icon.danger {
+    background: rgba(239, 68, 68, 0.1);
+    color: #ef4444;
+}
+
+.activity-icon.info {
+    background: rgba(6, 182, 212, 0.1);
+    color: #06b6d4;
+}
+
+[data-theme="dark"] .activity-icon.primary {
+    background: rgba(79, 70, 229, 0.2);
+    color: var(--primary-color);
+}
+
+[data-theme="dark"] .activity-icon.success {
+    background: rgba(16, 185, 129, 0.2);
+    color: #10b981;
+}
+
+[data-theme="dark"] .activity-icon.warning {
+    background: rgba(245, 158, 11, 0.2);
+    color: #f59e0b;
+}
+
+[data-theme="dark"] .activity-icon.danger {
+    background: rgba(239, 68, 68, 0.2);
+    color: #ef4444;
+}
+
+[data-theme="dark"] .activity-icon.info {
+    background: rgba(6, 182, 212, 0.2);
+    color: #06b6d4;
+}
+
+.activity-content {
+    flex: 1;
+}
+
+.activity-title {
+    font-weight: 500;
+    margin-bottom: 4px;
+    color: var(--text-color);
+}
+
+.activity-meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 4px;
+}
+
+.activity-branch {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    font-weight: 500;
+}
+
+.activity-time {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    font-weight: 400;
 }
 </style>
 

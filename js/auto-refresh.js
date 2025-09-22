@@ -7,9 +7,15 @@
         // Add timestamp to prevent caching
         const timestamp = new Date().getTime();
         
-        // Update any data tables
+        // Update any data tables that have AJAX data sources
         if (typeof $.fn.DataTable !== 'undefined') {
-            $('.data-table').DataTable().ajax.reload(null, false);
+            $('.data-table').each(function() {
+                const table = $(this).DataTable();
+                // Only reload if the table has AJAX data source
+                if (table.settings()[0].ajax) {
+                    table.ajax.reload(null, false);
+                }
+            });
         }
         
         // Force refresh of any cached content
@@ -55,7 +61,9 @@
         }
     });
     
-    // Auto-refresh every 30 seconds for live data
+    // Auto-refresh disabled to prevent DataTables errors
+    // The ID reordering functionality makes auto-refresh unnecessary
+    /*
     setInterval(function() {
         // Only refresh if user is active
         if (!document.hidden) {
@@ -69,6 +77,7 @@
             refreshData();
         }
     });
+    */
     
     // Refresh button functionality removed per user request
     

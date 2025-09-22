@@ -35,16 +35,32 @@ $stmt = $pdo->prepare("SELECT COUNT(*) FROM users WHERE branch_id = ?");
 $stmt->execute([$branchId]);
 $stats['total_users'] = $stmt->fetchColumn();
 
-// Recent activities for this branch
+// Recent activities for this branch - Get from activity_log
 $stmt = $pdo->prepare("
-    SELECT 'system' as type, id, 'System assigned' as action, created_at 
-    FROM systems 
-    WHERE branch_id = ? 
-    ORDER BY created_at DESC 
-    LIMIT 5
+    SELECT al.activity_type as type, al.entity_name, al.description, al.created_at as activity_date
+    FROM activity_log al
+    WHERE al.branch_id = ? AND al.created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)
+    ORDER BY al.created_at DESC
+    LIMIT 10
 ");
 $stmt->execute([$branchId]);
 $recent_activities = $stmt->fetchAll();
+
+// If no activities in activity_log, fall back to system_history for assignments
+if (empty($recent_activities)) {
+    $stmt = $pdo->prepare("
+        SELECT 'assignment' as type, s.system_code as entity_name, e.full_name as employee_name, sh.assigned_date as activity_date,
+               CONCAT('System ', s.system_code, ' assigned to ', e.full_name) as description
+        FROM system_history sh
+        JOIN systems s ON sh.system_id = s.id
+        JOIN employees e ON sh.employee_id = e.id
+        WHERE s.branch_id = ? AND sh.assigned_date >= DATE_SUB(NOW(), INTERVAL 7 DAY)
+        ORDER BY sh.assigned_date DESC
+        LIMIT 10
+    ");
+    $stmt->execute([$branchId]);
+    $recent_activities = $stmt->fetchAll();
+}
 
 // Get recent employees
 $stmt = $pdo->prepare("
@@ -154,18 +170,90 @@ $recent_employees = $stmt->fetchAll();
                             <div class="text-center py-4">
                                 <i class="fas fa-history fa-3x text-gray-300 mb-3"></i>
                                 <p class="text-muted">No recent activities found</p>
+                                <small class="text-muted">Activities will appear here as users interact with the system</small>
                             </div>
                         <?php else: ?>
                             <div class="list-group list-group-flush">
                                 <?php foreach ($recent_activities as $activity): ?>
-                                    <div class="list-group-item d-flex justify-content-between align-items-center">
-                                        <div>
-                                            <i class="fas fa-desktop text-primary me-2"></i>
-                                            <strong><?php echo htmlspecialchars($activity['action']); ?></strong>
+                                    <div class="list-group-item d-flex align-items-start">
+                                        <div class="me-3">
+                                            <?php
+                                            $iconClass = '';
+                                            $iconColor = '';
+                                            switch($activity['type']) {
+                                                case 'assignment':
+                                                    $iconClass = 'fas fa-user-plus';
+                                                    $iconColor = 'text-success';
+                                                    break;
+                                                case 'system_add':
+                                                    $iconClass = 'fas fa-desktop';
+                                                    $iconColor = 'text-primary';
+                                                    break;
+                                                case 'system_edit':
+                                                    $iconClass = 'fas fa-edit';
+                                                    $iconColor = 'text-warning';
+                                                    break;
+                                                case 'system_delete':
+                                                    $iconClass = 'fas fa-trash';
+                                                    $iconColor = 'text-danger';
+                                                    break;
+                                                case 'system_assign':
+                                                    $iconClass = 'fas fa-user-plus';
+                                                    $iconColor = 'text-success';
+                                                    break;
+                                                case 'employee_add':
+                                                    $iconClass = 'fas fa-user-tie';
+                                                    $iconColor = 'text-info';
+                                                    break;
+                                                case 'employee_edit':
+                                                    $iconClass = 'fas fa-user-edit';
+                                                    $iconColor = 'text-warning';
+                                                    break;
+                                                case 'employee_delete':
+                                                    $iconClass = 'fas fa-user-times';
+                                                    $iconColor = 'text-danger';
+                                                    break;
+                                                case 'user_add':
+                                                    $iconClass = 'fas fa-user-cog';
+                                                    $iconColor = 'text-warning';
+                                                    break;
+                                                case 'user_edit':
+                                                    $iconClass = 'fas fa-user-edit';
+                                                    $iconColor = 'text-warning';
+                                                    break;
+                                                case 'user_delete':
+                                                    $iconClass = 'fas fa-user-slash';
+                                                    $iconColor = 'text-danger';
+                                                    break;
+                                                case 'branch_add':
+                                                    $iconClass = 'fas fa-building';
+                                                    $iconColor = 'text-success';
+                                                    break;
+                                                case 'branch_edit':
+                                                    $iconClass = 'fas fa-building';
+                                                    $iconColor = 'text-warning';
+                                                    break;
+                                                case 'branch_delete':
+                                                    $iconClass = 'fas fa-building';
+                                                    $iconColor = 'text-danger';
+                                                    break;
+                                                default:
+                                                    $iconClass = 'fas fa-circle';
+                                                    $iconColor = 'text-muted';
+                                            }
+                                            ?>
+                                            <i class="<?php echo $iconClass . ' ' . $iconColor; ?>"></i>
                                         </div>
-                                        <small class="text-muted">
-                                            <?php echo date('M j, Y g:i A', strtotime($activity['created_at'])); ?>
-                                        </small>
+                                        <div class="flex-grow-1">
+                                            <div class="fw-medium text-dark">
+                                                <?php echo htmlspecialchars($activity['description']); ?>
+                                            </div>
+                                        </div>
+                                        <div class="ms-2">
+                                            <small class="text-muted">
+                                                <?php echo date('M j, g:i A', strtotime($activity['activity_date'])); ?>
+                                            </small>
+                                        </div>
                                     </div>
                                 <?php endforeach; ?>
                             </div>

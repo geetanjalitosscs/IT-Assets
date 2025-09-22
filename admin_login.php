@@ -72,6 +72,67 @@ if (isset($_GET['error']) && $_GET['error'] == '1') {
             padding: 20px;
             box-sizing: border-box;
             position: relative;
+            transition: background 0.3s ease;
+        }
+        
+        /* Dark mode for login */
+        [data-theme="dark"] body {
+            background: linear-gradient(135deg, #0f0f23 0%, #1a1a2e 50%, #16213e 100%);
+        }
+        
+        [data-theme="dark"] body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: 
+                radial-gradient(circle at 20% 80%, rgba(79, 70, 229, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 80% 20%, rgba(99, 102, 241, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 40% 40%, rgba(79, 70, 229, 0.05) 0%, transparent 50%);
+            z-index: -1;
+            pointer-events: none;
+        }
+        
+        [data-theme="dark"] .login-card {
+            background: linear-gradient(135deg, rgba(26, 26, 46, 0.95) 0%, rgba(22, 33, 62, 0.95) 100%);
+            color: #e2e8f0;
+            border: 1px solid #334155;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+        }
+        
+        [data-theme="dark"] .form-control {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            border: 1px solid #334155;
+            color: #e2e8f0;
+        }
+        
+        [data-theme="dark"] .form-control:focus {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            border-color: #4f46e5;
+            color: #e2e8f0;
+            box-shadow: 0 0 0 0.2rem rgba(79, 70, 229, 0.25);
+        }
+        
+        [data-theme="dark"] .btn-primary {
+            background: linear-gradient(135deg, #4f46e5, #6366f1);
+            border: none;
+            box-shadow: 0 4px 15px rgba(79, 70, 229, 0.3);
+        }
+        
+        [data-theme="dark"] .btn-primary:hover {
+            background: linear-gradient(135deg, #6366f1, #4f46e5);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(79, 70, 229, 0.4);
+        }
+        
+        [data-theme="dark"] .text-muted {
+            color: #94a3b8 !important;
+        }
+        
+        [data-theme="dark"] .form-label {
+            color: #e2e8f0 !important;
         }
         
         body::before {
@@ -246,6 +307,32 @@ if (isset($_GET['error']) && $_GET['error'] == '1') {
             }
         }
     </style>
+    
+    <!-- Dark Mode JavaScript -->
+    <script>
+        // Apply theme on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            const savedTheme = '<?php echo $_SESSION['theme'] ?? 'light'; ?>';
+            applyTheme(savedTheme);
+        });
+        
+        function applyTheme(theme) {
+            const html = document.documentElement;
+            
+            if (theme === 'dark') {
+                html.setAttribute('data-theme', 'dark');
+            } else if (theme === 'auto') {
+                // Check system preference
+                if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+                    html.setAttribute('data-theme', 'dark');
+                } else {
+                    html.removeAttribute('data-theme');
+                }
+            } else {
+                html.removeAttribute('data-theme');
+            }
+        }
+    </script>
 </head>
 <body>
     <div class="login-card">

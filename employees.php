@@ -32,7 +32,18 @@ if ($_POST) {
                         // Insert with the next sequential ID
                         $stmt = $pdo->prepare("INSERT INTO employees (id, employee_id, full_name, email, phone, department, position, branch_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
                         $stmt->execute([$next_id, $employeeId, $fullName, $email, $phone, $department, $position, $branchId]);
-                        $success = "Employee added successfully with ID: " . $next_id;
+                        
+                        // Log the employee addition activity
+                        $stmt = $pdo->prepare("INSERT INTO activity_log (activity_type, entity_id, entity_name, description, branch_id) VALUES (?, ?, ?, ?, ?)");
+                        $stmt->execute([
+                            'employee_add',
+                            $next_id,
+                            $employeeId,
+                            'New employee ' . $fullName . ' (' . $employeeId . ') added',
+                            $branchId
+                        ]);
+                        
+                        $success = "Employee added successfully";
                     } else {
                         $error = "Employee ID already exists!";
                     }
@@ -58,7 +69,18 @@ if ($_POST) {
                     if ($stmt->fetchColumn() == 0) {
                         $stmt = $pdo->prepare("UPDATE employees SET employee_id = ?, full_name = ?, email = ?, phone = ?, department = ?, position = ?, branch_id = ? WHERE id = ?");
                         $stmt->execute([$employeeId, $fullName, $email, $phone, $department, $position, $branchId, $id]);
-                        $success = "Employee updated successfully!";
+                        
+                        // Log the employee edit activity
+                        $stmt = $pdo->prepare("INSERT INTO activity_log (activity_type, entity_id, entity_name, description, branch_id) VALUES (?, ?, ?, ?, ?)");
+                        $stmt->execute([
+                            'employee_edit',
+                            $id,
+                            $employeeId,
+                            'Employee ' . $fullName . ' (' . $employeeId . ') updated',
+                            $branchId
+                        ]);
+                        
+                        $success = "Employee updated successfully";
                     } else {
                         $error = "Employee ID already exists!";
                     }
@@ -69,6 +91,23 @@ if ($_POST) {
                 
             case 'delete':
                 $id = $_POST['id'];
+                
+                // Get employee info before deletion for logging
+                $stmt = $pdo->prepare("SELECT employee_id, full_name, branch_id FROM employees WHERE id = ?");
+                $stmt->execute([$id]);
+                $employeeInfo = $stmt->fetch();
+                
+                if ($employeeInfo) {
+                    // Log the deletion activity
+                    $stmt = $pdo->prepare("INSERT INTO activity_log (activity_type, entity_id, entity_name, description, branch_id) VALUES (?, ?, ?, ?, ?)");
+                    $stmt->execute([
+                        'employee_delete',
+                        $id,
+                        $employeeInfo['employee_id'],
+                        'Employee ' . $employeeInfo['full_name'] . ' (' . $employeeInfo['employee_id'] . ') deleted',
+                        $employeeInfo['branch_id']
+                    ]);
+                }
                 
                 // First, delete the employee
                 $stmt = $pdo->prepare("DELETE FROM employees WHERE id = ?");
@@ -89,7 +128,7 @@ if ($_POST) {
                     $new_id++;
                 }
                 
-                $success = "Employee deleted successfully and IDs reordered!";
+                $success = "Employee deleted successfully";
                 break;
         }
     }
@@ -179,20 +218,20 @@ include 'includes/sidebar.php';
             </div>
             <div class="card-body">
                 <div class="table-responsive">
-                    <table class="table table-bordered data-table" width="100%" cellspacing="0">
+                    <table class="table table-bordered data-table" width="100%" cellspacing="0" style="min-height: 60px;">
                         <thead>
                             <tr>
-                                <th>Employee ID</th>
-                                <th>Full Name</th>
-                                <th>Email</th>
-                                <th>Phone</th>
-                                <th>Department</th>
-                                <th>Position</th>
+                                <th style="width: 120px;">Employee ID</th>
+                                <th style="width: 150px;">Full Name</th>
+                                <th style="width: 180px;">Email</th>
+                                <th style="width: 150px;">Phone</th>
+                                <th style="width: 120px;">Department</th>
+                                <th style="width: 220px;">Position</th>
                                 <?php if (isSuperAdmin()): ?>
-                                    <th>Branch</th>
+                                    <th style="width: 120px;">Branch</th>
                                 <?php endif; ?>
-                                <th>Assigned Systems</th>
-                                <th>Actions</th>
+                                <th style="width: 100px;">Systems</th>
+                                <th style="width: 120px; min-width: 120px;">Actions</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -200,12 +239,16 @@ include 'includes/sidebar.php';
                                 <tr>
                                     <td><strong><?php echo htmlspecialchars($employee['employee_id']); ?></strong></td>
                                     <td><?php echo htmlspecialchars($employee['full_name']); ?></td>
-                                    <td>
-                                        <a href="mailto:<?php echo htmlspecialchars($employee['email']); ?>">
-                                            <?php echo htmlspecialchars($employee['email']); ?>
+                                    <td style="vertical-align: middle; line-height: 1.2; font-size: 0.9em;">
+                                        <a href="mailto:<?php echo htmlspecialchars($employee['email']); ?>" style="text-decoration: none; color: #0d6efd;">
+                                            <?php 
+                                            $email = htmlspecialchars($employee['email']);
+                                            $emailParts = explode('@', $email);
+                                            echo $emailParts[0] . '<br>@' . $emailParts[1];
+                                            ?>
                                         </a>
                                     </td>
-                                    <td>
+                                    <td style="vertical-align: middle; line-height: 1.4;">
                                         <?php if ($employee['phone']): ?>
                                             <a href="tel:<?php echo htmlspecialchars($employee['phone']); ?>">
                                                 <?php echo htmlspecialchars($employee['phone']); ?>
@@ -214,22 +257,30 @@ include 'includes/sidebar.php';
                                             <span class="text-muted">-</span>
                                         <?php endif; ?>
                                     </td>
-                                    <td><?php echo htmlspecialchars($employee['department'] ?: '-'); ?></td>
-                                    <td><?php echo htmlspecialchars($employee['position'] ?: '-'); ?></td>
+                                    <td>
+                                        <span title="<?php echo htmlspecialchars($employee['department'] ?: '-'); ?>">
+                                            <?php echo strlen($employee['department']) > 12 ? substr(htmlspecialchars($employee['department'] ?: '-'), 0, 12) . '...' : htmlspecialchars($employee['department'] ?: '-'); ?>
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <?php echo htmlspecialchars($employee['position'] ?: '-'); ?>
+                                    </td>
                                     <?php if (isSuperAdmin()): ?>
                                         <td><?php echo htmlspecialchars($employee['branch_name']); ?></td>
                                     <?php endif; ?>
-                                    <td>
+                                    <td class="text-center">
                                         <span class="badge badge-info"><?php echo $employee['assigned_systems']; ?></span>
                                     </td>
                                     <td>
                                         <div class="btn-group" role="group">
                                             <button type="button" class="btn btn-sm btn-outline-primary" 
-                                                    onclick="editEmployee(<?php echo htmlspecialchars(json_encode($employee)); ?>)">
+                                                    onclick="editEmployee(<?php echo htmlspecialchars(json_encode($employee)); ?>)"
+                                                    title="Edit Employee">
                                                 <i class="fas fa-edit"></i>
                                             </button>
                                             <button type="button" class="btn btn-sm btn-outline-danger" 
-                                                    onclick="deleteEmployee(<?php echo $employee['id']; ?>, '<?php echo htmlspecialchars($employee['full_name']); ?>')">
+                                                    onclick="deleteEmployee(<?php echo $employee['id']; ?>, '<?php echo htmlspecialchars($employee['full_name']); ?>')"
+                                                    title="Delete Employee">
                                                 <i class="fas fa-trash"></i>
                                             </button>
                                         </div>
@@ -246,13 +297,13 @@ include 'includes/sidebar.php';
 
 <!-- Add Employee Modal -->
 <div class="modal fade" id="addEmployeeModal" tabindex="-1">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">
-                    <i class="fas fa-plus me-2"></i>Add New Employee
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content" style="border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.15);">
+            <div class="modal-header" style="background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%); border-radius: 15px 15px 0 0; border: none;">
+                <h5 class="modal-title text-white">
+                    <i class="fas fa-user-plus me-2"></i>Add New Employee
                 </h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <form method="POST">
                 <div class="modal-body">
@@ -261,7 +312,7 @@ include 'includes/sidebar.php';
                         <div class="col-md-6">
                             <div class="mb-3">
                                 <label for="employee_id" class="form-label">Employee ID <span class="text-danger">*</span></label>
-                                <input type="text" class="form-control" id="employee_id" name="employee_id" required>
+                                <input type="text" class="form-control" id="employee_id" name="employee_id" value="EMP" required>
                                 <small class="form-text text-muted">e.g., EMP001, EMP002</small>
                             </div>
                         </div>
@@ -299,20 +350,62 @@ include 'includes/sidebar.php';
                         <div class="col-md-6">
                             <div class="mb-3">
                                 <label for="department" class="form-label">Department</label>
-                                <input type="text" class="form-control" id="department" name="department">
+                                <select class="form-select" id="department" name="department">
+                                    <option value="">Select Department</option>
+                                    <option value="IT">IT</option>
+                                    <option value="HR">HR</option>
+                                    <option value="Finance">Finance</option>
+                                    <option value="Marketing">Marketing</option>
+                                    <option value="Sales">Sales</option>
+                                    <option value="Operations">Operations</option>
+                                    <option value="Administration">Administration</option>
+                                    <option value="Customer Service">Customer Service</option>
+                                    <option value="Research & Development">Research & Development</option>
+                                    <option value="Quality Assurance">Quality Assurance</option>
+                                    <option value="Other">Other</option>
+                                </select>
                             </div>
                         </div>
                         <div class="col-md-6">
                             <div class="mb-3">
                                 <label for="position" class="form-label">Position</label>
-                                <input type="text" class="form-control" id="position" name="position">
+                                <select class="form-select" id="position" name="position">
+                                    <option value="">Select Position</option>
+                                    <option value="Manager">Manager</option>
+                                    <option value="Senior Developer">Senior Developer</option>
+                                    <option value="Developer">Developer</option>
+                                    <option value="Junior Developer">Junior Developer</option>
+                                    <option value="System Administrator">System Administrator</option>
+                                    <option value="Network Engineer">Network Engineer</option>
+                                    <option value="Database Administrator">Database Administrator</option>
+                                    <option value="IT Support">IT Support</option>
+                                    <option value="HR Manager">HR Manager</option>
+                                    <option value="HR Specialist">HR Specialist</option>
+                                    <option value="Accountant">Accountant</option>
+                                    <option value="Financial Analyst">Financial Analyst</option>
+                                    <option value="Marketing Manager">Marketing Manager</option>
+                                    <option value="Marketing Specialist">Marketing Specialist</option>
+                                    <option value="Sales Manager">Sales Manager</option>
+                                    <option value="Sales Representative">Sales Representative</option>
+                                    <option value="Operations Manager">Operations Manager</option>
+                                    <option value="Administrative Assistant">Administrative Assistant</option>
+                                    <option value="Customer Service Representative">Customer Service Representative</option>
+                                    <option value="Research Analyst">Research Analyst</option>
+                                    <option value="Quality Assurance Specialist">Quality Assurance Specialist</option>
+                                    <option value="Intern">Intern</option>
+                                    <option value="Other">Other</option>
+                                </select>
                             </div>
                         </div>
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Add Employee</button>
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times me-2"></i>Cancel
+                    </button>
+                    <button type="submit" class="btn btn-primary" style="background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%); border: none; box-shadow: 0 4px 15px rgba(30, 64, 175, 0.3);">
+                        <i class="fas fa-user-plus me-2"></i>Add Employee
+                    </button>
                 </div>
             </form>
         </div>
@@ -373,13 +466,51 @@ include 'includes/sidebar.php';
                         <div class="col-md-6">
                             <div class="mb-3">
                                 <label for="edit_department" class="form-label">Department</label>
-                                <input type="text" class="form-control" id="edit_department" name="department">
+                                <select class="form-select" id="edit_department" name="department">
+                                    <option value="">Select Department</option>
+                                    <option value="IT">IT</option>
+                                    <option value="HR">HR</option>
+                                    <option value="Finance">Finance</option>
+                                    <option value="Marketing">Marketing</option>
+                                    <option value="Sales">Sales</option>
+                                    <option value="Operations">Operations</option>
+                                    <option value="Administration">Administration</option>
+                                    <option value="Customer Service">Customer Service</option>
+                                    <option value="Research & Development">Research & Development</option>
+                                    <option value="Quality Assurance">Quality Assurance</option>
+                                    <option value="Other">Other</option>
+                                </select>
                             </div>
                         </div>
                         <div class="col-md-6">
                             <div class="mb-3">
                                 <label for="edit_position" class="form-label">Position</label>
-                                <input type="text" class="form-control" id="edit_position" name="position">
+                                <select class="form-select" id="edit_position" name="position">
+                                    <option value="">Select Position</option>
+                                    <option value="Manager">Manager</option>
+                                    <option value="Senior Developer">Senior Developer</option>
+                                    <option value="Developer">Developer</option>
+                                    <option value="Junior Developer">Junior Developer</option>
+                                    <option value="System Administrator">System Administrator</option>
+                                    <option value="Network Engineer">Network Engineer</option>
+                                    <option value="Database Administrator">Database Administrator</option>
+                                    <option value="IT Support">IT Support</option>
+                                    <option value="HR Manager">HR Manager</option>
+                                    <option value="HR Specialist">HR Specialist</option>
+                                    <option value="Accountant">Accountant</option>
+                                    <option value="Financial Analyst">Financial Analyst</option>
+                                    <option value="Marketing Manager">Marketing Manager</option>
+                                    <option value="Marketing Specialist">Marketing Specialist</option>
+                                    <option value="Sales Manager">Sales Manager</option>
+                                    <option value="Sales Representative">Sales Representative</option>
+                                    <option value="Operations Manager">Operations Manager</option>
+                                    <option value="Administrative Assistant">Administrative Assistant</option>
+                                    <option value="Customer Service Representative">Customer Service Representative</option>
+                                    <option value="Research Analyst">Research Analyst</option>
+                                    <option value="Quality Assurance Specialist">Quality Assurance Specialist</option>
+                                    <option value="Intern">Intern</option>
+                                    <option value="Other">Other</option>
+                                </select>
                             </div>
                         </div>
                     </div>
@@ -444,6 +575,84 @@ function deleteEmployee(id, name) {
     const deleteModal = new bootstrap.Modal(document.getElementById('deleteEmployeeModal'));
     deleteModal.show();
 }
+
+// Clear form fields when modals are closed
+document.addEventListener('DOMContentLoaded', function() {
+    // Clear Add Employee Modal
+    const addModal = document.getElementById('addEmployeeModal');
+    addModal.addEventListener('hidden.bs.modal', function() {
+        document.getElementById('addEmployeeModal').querySelector('form').reset();
+        // Reset employee ID to default "EMP"
+        document.getElementById('employee_id').value = 'EMP';
+    });
+    
+    // Clear Edit Employee Modal
+    const editModal = document.getElementById('editEmployeeModal');
+    editModal.addEventListener('hidden.bs.modal', function() {
+        document.getElementById('editEmployeeModal').querySelector('form').reset();
+    });
+});
 </script>
+
+<style>
+/* Modal Dark Mode Styling */
+.modal-footer {
+    border-top: 1px solid #e9ecef;
+    background: #f8f9fa;
+    border-radius: 0 0 15px 15px;
+}
+
+[data-theme="dark"] .modal-content {
+    background: linear-gradient(135deg, var(--card-bg) 0%, var(--card-hover) 100%);
+    border: 1px solid var(--border-color);
+    color: var(--text-color);
+}
+
+[data-theme="dark"] .modal-header {
+    background: linear-gradient(135deg, var(--gradient-start) 0%, var(--gradient-end) 100%);
+    border-color: var(--border-color);
+}
+
+[data-theme="dark"] .modal-body {
+    background: transparent;
+    color: var(--text-color);
+}
+
+[data-theme="dark"] .modal-footer {
+    background: linear-gradient(135deg, var(--card-bg) 0%, var(--card-hover) 100%);
+    border-top: 1px solid var(--border-color);
+}
+
+[data-theme="dark"] .modal-title {
+    color: white;
+}
+
+[data-theme="dark"] .btn-close {
+    filter: invert(1);
+}
+
+[data-theme="dark"] .form-label {
+    color: var(--text-color);
+}
+
+[data-theme="dark"] .form-text {
+    color: var(--text-muted);
+}
+
+[data-theme="dark"] .text-muted {
+    color: var(--text-muted);
+}
+
+[data-theme="dark"] .btn-outline-secondary {
+    border-color: var(--border-color);
+    color: var(--text-color);
+}
+
+[data-theme="dark"] .btn-outline-secondary:hover {
+    background-color: var(--card-hover);
+    border-color: var(--border-color);
+    color: var(--text-color);
+}
+</style>
 
 <?php include 'includes/footer.php'; ?>
