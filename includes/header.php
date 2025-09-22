@@ -1233,10 +1233,19 @@ require_once 'config/cache_control.php';
     
     <!-- Dark Mode JavaScript -->
     <script>
-        // Apply theme on page load
+        // Enhanced theme application with multiple fallbacks
         document.addEventListener('DOMContentLoaded', function() {
-            const savedTheme = '<?php echo $_SESSION['theme'] ?? 'light'; ?>';
-            applyTheme(savedTheme);
+            const sessionTheme = '<?php echo $_SESSION['theme'] ?? 'light'; ?>';
+            const localStorageTheme = localStorage.getItem('theme');
+            
+            // Priority: Session > localStorage > default
+            const themeToApply = sessionTheme || localStorageTheme || 'light';
+            
+            // Apply theme with multiple attempts
+            applyThemeWithFallback(themeToApply);
+            
+            // Store theme in localStorage as backup
+            localStorage.setItem('theme', themeToApply);
         });
         
         function applyTheme(theme) {
@@ -1254,6 +1263,24 @@ require_once 'config/cache_control.php';
             } else {
                 html.removeAttribute('data-theme');
             }
+            
+            // Store in localStorage as backup
+            localStorage.setItem('theme', theme);
+        }
+        
+        function applyThemeWithFallback(theme) {
+            try {
+                applyTheme(theme);
+            } catch (error) {
+                console.error('Theme application failed:', error);
+                // Fallback: Direct DOM manipulation
+                const html = document.documentElement;
+                if (theme === 'dark') {
+                    html.setAttribute('data-theme', 'dark');
+                } else {
+                    html.removeAttribute('data-theme');
+                }
+            }
         }
         
         // Listen for system theme changes
@@ -1261,10 +1288,18 @@ require_once 'config/cache_control.php';
             window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function(e) {
                 const currentTheme = '<?php echo $_SESSION['theme'] ?? 'light'; ?>';
                 if (currentTheme === 'auto') {
-                    applyTheme('auto');
+                    applyThemeWithFallback('auto');
                 }
             });
         }
+        
+        // Additional safety: Reapply theme after a short delay
+        setTimeout(() => {
+            const currentTheme = localStorage.getItem('theme') || '<?php echo $_SESSION['theme'] ?? 'light'; ?>';
+            if (currentTheme) {
+                applyThemeWithFallback(currentTheme);
+            }
+        }, 500);
     </script>
 </head>
 <body>

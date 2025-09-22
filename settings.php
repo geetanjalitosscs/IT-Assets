@@ -160,7 +160,7 @@ include 'includes/sidebar.php';
                                     <option value="dark" <?php echo ($_SESSION['theme'] ?? 'light') == 'dark' ? 'selected' : ''; ?>>Dark</option>
                                     <option value="auto" <?php echo ($_SESSION['theme'] ?? 'light') == 'auto' ? 'selected' : ''; ?>>Auto</option>
                                 </select>
-                                <small class="form-text text-muted">Select to preview, click Save to apply</small>
+                                <small class="form-text text-muted">Select the mode</small>
                             </div>
                             <div class="mb-3">
                                 <div class="form-check">
@@ -413,24 +413,56 @@ function cancelPreview() {
 
 // Use the global applyTheme function from header.php
 
-// Handle preferences form submission
+// Handle preferences form submission with multiple fallbacks
 document.addEventListener('DOMContentLoaded', function() {
     const preferencesForm = document.querySelector('input[name="action"][value="update_preferences"]').closest('form');
     
-    preferencesForm.addEventListener('submit', function(e) {
-        if (isPreviewMode) {
-            // Update original theme to current selection
-            originalTheme = document.getElementById('theme').value;
-            isPreviewMode = false;
-            
-            // Apply the new theme immediately
-            applyTheme(originalTheme);
-        } else {
-            // Even if not in preview mode, apply the selected theme
+    if (preferencesForm) {
+        preferencesForm.addEventListener('submit', function(e) {
             const selectedTheme = document.getElementById('theme').value;
-            applyTheme(selectedTheme);
-        }
-    });
+            
+            // Always apply the selected theme immediately
+            if (typeof applyTheme === 'function') {
+                applyTheme(selectedTheme);
+            } else {
+                // Fallback: Direct DOM manipulation
+                const html = document.documentElement;
+                if (selectedTheme === 'dark') {
+                    html.setAttribute('data-theme', 'dark');
+                } else if (selectedTheme === 'auto') {
+                    if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+                        html.setAttribute('data-theme', 'dark');
+                    } else {
+                        html.removeAttribute('data-theme');
+                    }
+                } else {
+                    html.removeAttribute('data-theme');
+                }
+            }
+            
+            // Update original theme for preview functionality
+            if (isPreviewMode) {
+                originalTheme = selectedTheme;
+                isPreviewMode = false;
+            }
+            
+            // Additional fallback: Store theme in localStorage as backup
+            localStorage.setItem('theme', selectedTheme);
+            
+            // Show immediate feedback
+            console.log('Theme applied:', selectedTheme);
+        });
+    }
+    
+    // Additional safety: Apply theme from localStorage on page load if session fails
+    const savedTheme = localStorage.getItem('theme');
+    if (savedTheme && savedTheme !== originalTheme) {
+        setTimeout(() => {
+            if (typeof applyTheme === 'function') {
+                applyTheme(savedTheme);
+            }
+        }, 100);
+    }
 });
 </script>
 
