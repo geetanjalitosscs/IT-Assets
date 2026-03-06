@@ -35,6 +35,12 @@ A comprehensive PHP + MySQL IT Asset Management System with role-based access co
 - DataTables with search, filter, and pagination
 - Interactive charts and dashboards
 
+### 👤 User Profile & Settings
+- User profile management with contact information
+- Password change functionality
+- Account settings and preferences
+- Session management and security
+
 ## Installation
 
 ### Prerequisites
@@ -74,6 +80,10 @@ A comprehensive PHP + MySQL IT Asset Management System with role-based access co
    - You'll be redirected to the login page
    - Use the default credentials to log in
 
+6. **Verify Requirements (Optional)**
+   - Run `check_extensions.php` to verify all required PHP extensions are installed
+   - This will help troubleshoot any compatibility issues
+
 ## File Structure
 
 > Note: This reflects the current structure under `IT Assets` as used in the KT document.
@@ -92,13 +102,17 @@ A comprehensive PHP + MySQL IT Asset Management System with role-based access co
 │   ├── auto-refresh.js           # Auto-refresh logic for selected pages
 │   └── notifications.js          # Client-side notification helpers
 ├── dashboard.php                 # Super Admin dashboard
-├── branch_dashboard.php          # Branch Admin dashboard
+├── admin_dashboard.php          # Branch Admin dashboard (enhanced)
+├── branch_dashboard.php          # Branch Admin dashboard (legacy)
 ├── login.php                     # Login page
 ├── logout.php                    # Logout handler
 ├── super_admin_login.php         # (Optional) dedicated Super Admin login entry
 ├── admin_login.php               # (Optional) branch admin login entry
+├── profile.php                   # User profile management
+├── settings.php                  # User settings and password change
 ├── branches.php                  # Branch management (Super Admin)
 ├── users.php                     # User management (Super Admin)
+├── admin_users.php               # User management within branch (Branch Admin)
 ├── systems.php                   # System management
 ├── employees.php                 # Employee management
 ├── peripherals.php               # Peripheral management
@@ -106,6 +120,7 @@ A comprehensive PHP + MySQL IT Asset Management System with role-based access co
 ├── reports.php                   # Reports and exports
 ├── generate_pdf.php              # PDF report generation
 ├── index.php                     # Main entry point / router to login
+├── check_extensions.php          # PHP extensions checker
 ├── sample_data.sql               # Optional sample data
 ├── setup_database.sql            # SQL schema setup script
 ├── it_asset_management.sql       # Full DB dump / reference schema
@@ -115,7 +130,7 @@ A comprehensive PHP + MySQL IT Asset Management System with role-based access co
 ├── test_connection.php           # DB connectivity test script
 ├── test_branch_id_reuse.php      # Branch ID reuse test utility
 ├── REFRESH_SOLUTION.md           # Notes on refresh/timeout handling
-├── KT.md                         # Detailed Knowledge Transfer document
+├── IT-Assets-KT.md                         # Detailed Knowledge Transfer document
 └── README.md                     # This file
 ```
 
@@ -129,18 +144,23 @@ A comprehensive PHP + MySQL IT Asset Management System with role-based access co
 5. **System Overview**: View all systems across branches
 
 ### Branch Admin Features
-1. **Branch Dashboard**: Overview of branch-specific data
+1. **Branch Dashboard**: Overview of branch-specific data with enhanced statistics
 2. **System Management**: Add, edit, assign systems within branch
 3. **Employee Management**: Manage employees within branch
 4. **Peripheral Management**: Manage peripherals within branch
 5. **Branch Reports**: Generate branch-specific reports
+6. **User Management**: Create and manage users within their branch (admin_users.php)
+7. **Activity Monitoring**: View recent activities and system changes
+8. **Profile & Settings**: Manage personal profile and password
 
 ### Common Features
 - **System Assignment**: Assign systems to employees
 - **Peripheral Assignment**: Assign peripherals to systems
 - **History Tracking**: Complete audit trail of assignments
+- **Activity Logging**: Real-time activity monitoring and logging
 - **Export Functionality**: Export data to CSV/PDF formats
 - **Search & Filter**: Advanced search and filtering capabilities
+- **Profile Management**: All users can manage their profile and settings
 
 ## Security Features
 
@@ -149,6 +169,19 @@ A comprehensive PHP + MySQL IT Asset Management System with role-based access co
 - **SQL Injection Prevention**: Uses prepared statements throughout
 - **XSS Protection**: Input sanitization and output escaping
 - **Role-Based Access**: Strict permission system
+- **Activity Logging**: Comprehensive audit trail for all user actions
+
+## Activity Logging System
+
+The system includes a robust activity logging mechanism that tracks:
+- User additions and modifications
+- System assignments and changes
+- Employee management actions
+- Peripheral assignments
+- Branch-level activities
+- Login/logout events
+
+All activities are stored in the `activity_log` table with timestamps, user information, and detailed descriptions for audit purposes.
 
 ## Customization
 
