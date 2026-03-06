@@ -76,28 +76,47 @@ A comprehensive PHP + MySQL IT Asset Management System with role-based access co
 
 ## File Structure
 
+> Note: This reflects the current structure under `IT Assets` as used in the KT document.
+
 ```
 ├── config/
-│   ├── database.php          # Database configuration and initialization
-│   └── session.php           # Session management and authentication
+│   ├── database.php              # Database configuration and initialization (PDO + auto schema)
+│   ├── database_mysqli.php       # Legacy/alternate DB connector (if used)
+│   ├── session.php               # Session management and authentication helpers
+│   └── cache_control.php         # HTTP cache-control headers (if referenced)
 ├── includes/
-│   ├── header.php            # Common header with navigation
-│   ├── sidebar.php           # Sidebar navigation menu
-│   └── footer.php             # Common footer with scripts
-├── dashboard.php              # Super Admin dashboard
-├── branch_dashboard.php      # Branch Admin dashboard
-├── login.php                  # Login page
-├── logout.php                 # Logout handler
-├── branches.php               # Branch management (Super Admin)
-├── users.php                  # User management (Super Admin)
-├── systems.php                # System management
-├── employees.php              # Employee management
-├── peripherals.php            # Peripheral management
-├── system_history.php         # System assignment history
-├── reports.php                # Reports and exports
-├── generate_pdf.php           # PDF report generation
-├── index.php                  # Main entry point
-└── README.md                  # This file
+│   ├── header.php                # Common HTML <head>, top navigation, CSS/JS includes
+│   ├── sidebar.php               # Sidebar navigation menu (role-aware)
+│   └── footer.php                # Common footer with scripts
+├── js/
+│   ├── auto-refresh.js           # Auto-refresh logic for selected pages
+│   └── notifications.js          # Client-side notification helpers
+├── dashboard.php                 # Super Admin dashboard
+├── branch_dashboard.php          # Branch Admin dashboard
+├── login.php                     # Login page
+├── logout.php                    # Logout handler
+├── super_admin_login.php         # (Optional) dedicated Super Admin login entry
+├── admin_login.php               # (Optional) branch admin login entry
+├── branches.php                  # Branch management (Super Admin)
+├── users.php                     # User management (Super Admin)
+├── systems.php                   # System management
+├── employees.php                 # Employee management
+├── peripherals.php               # Peripheral management
+├── system_history.php            # System assignment history
+├── reports.php                   # Reports and exports
+├── generate_pdf.php              # PDF report generation
+├── index.php                     # Main entry point / router to login
+├── sample_data.sql               # Optional sample data
+├── setup_database.sql            # SQL schema setup script
+├── it_asset_management.sql       # Full DB dump / reference schema
+├── edueyeco_it-assets.sql        # Alternate DB dump (environment-specific)
+├── update_branches_table.sql     # Incremental schema/data update script
+├── update_credentials.sql        # Script to update credentials (if used)
+├── test_connection.php           # DB connectivity test script
+├── test_branch_id_reuse.php      # Branch ID reuse test utility
+├── REFRESH_SOLUTION.md           # Notes on refresh/timeout handling
+├── KT.md                         # Detailed Knowledge Transfer document
+└── README.md                     # This file
 ```
 
 ## Usage Guide
