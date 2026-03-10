@@ -67,18 +67,24 @@ A comprehensive PHP + MySQL IT Asset Management System with role-based access co
 
 3. **Database Initialization**
    - The database tables will be automatically created when you first access the system
-   - A default Super Admin account will be created:
-     - Username: `admin`
-     - Password: `admin123`
+   - Default accounts are pre-configured (see credentials below)
 
 4. **Web Server Configuration**
    - Ensure your web server can execute PHP files
    - Make sure the `config/` directory is writable (if needed)
 
 5. **Access the System**
-   - Open your web browser and navigate to your project URL
+   - Start **XAMPP** (Apache and MySQL)
+   - Ensure the database is running and configured
+   - Open your web browser and navigate to: **http://localhost/IT-Assets/index.php**
    - You'll be redirected to the login page
-   - Use the default credentials to log in
+   - Use the default credentials to log in:
+
+   **Default Credentials**
+   | Role         | Username     | Password   |
+   |--------------|--------------|------------|
+   | Super Admin  | Super Admin  | admin@123  |
+   | Admin        | Admin        | admin@123  |
 
 6. **Verify Requirements (Optional)**
    - Run `check_extensions.php` to verify all required PHP extensions are installed
@@ -214,7 +220,7 @@ All activities are stored in the `activity_log` table with timestamps, user info
    - Ensure PHP can write to session directory
 
 3. **Login Issues**
-   - Verify default credentials: admin/admin123
+   - Verify default credentials: Super Admin / admin@123 or Admin / admin@123
    - Check if user account exists in database
 
 4. **Page Not Found**
