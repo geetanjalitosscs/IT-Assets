@@ -1,4 +1,5 @@
--- Sample data for IT Asset Management System
+-- Sample data for IT Assets Management
+ System
 -- Run this after the system is set up to populate with sample data
 
 -- Insert sample branches

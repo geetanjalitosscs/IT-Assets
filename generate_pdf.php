@@ -147,7 +147,8 @@ unset($_SESSION['report_filename']);
     <?php endif; ?>
 
     <div class="footer">
-        <p>IT Asset Management System - Report generated on <?php echo date('Y-m-d H:i:s'); ?></p>
+        <p>IT Assets Management
+ System - Report generated on <?php echo date('Y-m-d H:i:s'); ?></p>
     </div>
 
     <div class="no-print" style="margin-top: 20px; text-align: center;">

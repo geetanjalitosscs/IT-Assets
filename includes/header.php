@@ -10,7 +10,8 @@ require_once 'config/cache_control.php';
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title><?php echo isset($pageTitle) ? $pageTitle . ' - ' : ''; ?>IT Asset Management</title>
+    <title><?php echo isset($pageTitle) ? $pageTitle . ' - ' : ''; ?>IT Assets Management
+</title>
     
     <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -1307,7 +1308,8 @@ require_once 'config/cache_control.php';
     <nav class="navbar navbar-expand-lg navbar-dark fixed-top">
         <div class="container-fluid">
             <a class="navbar-brand" href="<?php echo isSuperAdmin() ? 'dashboard.php' : 'branch_dashboard.php'; ?>">
-                <i class="fas fa-laptop-code me-2"></i>IT Asset Management
+                <i class="fas fa-laptop-code me-2"></i>IT Assets Management
+
             </a>
             
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">

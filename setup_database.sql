@@ -1,4 +1,5 @@
--- IT Asset Management System Database Setup
+-- IT Assets Management
+ System Database Setup
 -- Run this script in your MySQL database to set up the complete system
 
 -- Create database

@@ -1,4 +1,5 @@
--- Update login credentials for IT Asset Management System
+-- Update login credentials for IT Assets Management
+ System
 -- Run this script to update the user credentials
 
 -- First, let's clear existing users (optional - comment out if you want to keep existing users)

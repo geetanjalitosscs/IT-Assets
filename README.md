@@ -1,6 +1,8 @@
-# IT Asset Management System
+# IT Assets Management
+ System
 
-A comprehensive PHP + MySQL IT Asset Management System with role-based access control for Super Admin and Branch Admin users.
+A comprehensive PHP + MySQL IT Assets Management
+ System with role-based access control for Super Admin and Branch Admin users.
 
 ## Features
 

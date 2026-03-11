@@ -12,7 +12,8 @@ if (isLoggedIn()) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>IT Asset Management - Select Role</title>
+    <title>IT Assets Management
+ - Select Role</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
@@ -372,7 +373,8 @@ if (isLoggedIn()) {
     <div class="role-selection-card">
         <div class="role-header">
             <i class="fas fa-laptop-code fa-3x mb-3"></i>
-            <h2>IT Asset Management</h2>
+            <h2>IT Assets Management
+</h2>
             <p>Select your role to continue</p>
         </div>
         

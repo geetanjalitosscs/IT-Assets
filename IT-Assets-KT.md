@@ -1,4 +1,5 @@
-## Knowledge Transfer (KT) Document – IT Asset Management System
+## Knowledge Transfer (KT) Document – IT Assets Management
+ System
 
 ---
 
@@ -6,7 +7,8 @@
 
 | **Item** | **Details** |
 |----------|-------------|
-| **Project Name** | IT Asset Management System |
+| **Project Name** | IT Assets Management
+ System |
 | **Project Type** | Web application (internal IT asset tracking and assignment) |
 | **Tech Stack** | PHP (PDO, sessions), MySQL (`it_asset_management` DB), HTML5, CSS3, Bootstrap, JavaScript (vanilla + simple utilities), Apache/XAMPP on Windows |
 | **Repository** | `<to be filled: Git URL or on-prem path, e.g., git@repo.company.com:it/it-asset-management.git>` |
@@ -18,7 +20,8 @@ Fill in any missing values (repository URL, exact server hostnames, etc.) before
 
 ### 1. Project Overview
 
-The **IT Asset Management System** is an internal web application used by the organization to:
+The **IT Assets Management
+ System** is an internal web application used by the organization to:
 
 - **Track IT systems** (laptops, desktops, servers) at each branch.
 - **Manage peripherals** (keyboards, mice, monitors, printers, scanners, etc.).

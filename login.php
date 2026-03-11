@@ -70,7 +70,8 @@ if (isset($_GET['error']) && $_GET['error'] == '1') {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>IT Asset Management - Login</title>
+    <title>IT Assets Management
+ - Login</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
@@ -438,7 +439,8 @@ if (isset($_GET['error']) && $_GET['error'] == '1') {
     <div class="login-card">
                     <div class="login-header">
                         <i class="fas fa-laptop-code fa-3x mb-3"></i>
-                        <h3>IT Asset Management</h3>
+                        <h3>IT Assets Management
+</h3>
                         <p class="mb-0">
                             <?php if ($selectedRole === 'super_admin'): ?>
                                 Sign in as Super Admin
